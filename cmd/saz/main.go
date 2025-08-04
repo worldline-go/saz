@@ -1,0 +1,51 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/rakunlabs/into"
+	"github.com/rakunlabs/logi"
+
+	"github.com/worldline-go/saz/internal/config"
+	"github.com/worldline-go/saz/internal/database"
+	"github.com/worldline-go/saz/internal/server"
+	"github.com/worldline-go/saz/internal/service"
+	"github.com/worldline-go/tell"
+)
+
+func main() {
+	into.Init(run,
+		into.WithLogger(logi.InitializeLog()),
+		into.WithMsgf("%s [%s]", config.ServerName, config.ServerVersion),
+	)
+}
+
+func run(ctx context.Context) error {
+	cfg, err := config.Load(ctx)
+	if err != nil {
+		return err
+	}
+
+	collector, err := tell.New(ctx, cfg.Telemetry)
+	if err != nil {
+		return fmt.Errorf("init telemetry; %w", err)
+	}
+
+	defer collector.Shutdown()
+
+	db, err := database.Connect(ctx, cfg.Database)
+	if err != nil {
+		return fmt.Errorf("init database; %w", err)
+	}
+	defer db.Close()
+
+	svc := service.New(db)
+
+	srv, err := server.New(ctx, cfg.Server, svc)
+	if err != nil {
+		return fmt.Errorf("init server; %w", err)
+	}
+
+	return srv.Start(ctx)
+}

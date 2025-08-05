@@ -49,11 +49,8 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 
 	// ////////////////////////////////////////////
 
-	baseGroup := mux
-
-	baseGroup.POST("/api/v1/notes", s.notePost)
-	// baseGroup.GET("/api/v1/notes", s.noteGet)
-	// baseGroup.POST("/api/v1/run", s.run)
+	baseGroup := mux.Group(cfg.BasePath)
+	baseGroup.POST("/api/v1/run", s.run)
 
 	// ////////////////////////////////////////////
 
@@ -91,19 +88,4 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 
 func (s *Server) Start(ctx context.Context) error {
 	return s.server.StartWithContext(ctx, net.JoinHostPort(s.config.Host, s.config.Port))
-}
-
-func (s *Server) notePost(w http.ResponseWriter, r *http.Request) {
-	// var note Note
-	// if err := http.ReadJSON(r, &note); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusBadRequest)
-	// 	return
-	// }
-
-	// if err := s.service.CreateNote(r.Context(), &note); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// http.WriteJSON(w, note)
 }

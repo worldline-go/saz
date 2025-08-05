@@ -1,0 +1,12 @@
+database:
+  postgres:
+    db_datasource: "postgres://postgres@localhost:5432/postgres?sslmode=disable"
+    db_type: "pgx"
+
+store:
+  postgres:
+    db_datasource: "postgres://postgres@localhost:5432/postgres?sslmode=disable"
+    db_type: "pgx"
+    migrate:
+      db_datasource: "postgres://postgres@localhost:5432/postgres?sslmode=disable"
+      db_schema: "public"

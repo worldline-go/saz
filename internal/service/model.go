@@ -1,6 +1,12 @@
 package service
 
-import "context"
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+var ErrNotExists = errors.New("not exist")
 
 type Note struct {
 	ID string `json:"id"`
@@ -13,9 +19,13 @@ type Storer interface {
 // /////////////////////////////////////////////
 
 type Result interface {
+	Rows() []map[string]any
 	RowsAffected() (int64, error)
+	Duration() time.Duration
 }
 
 type Database interface {
-	Run(ctx context.Context, query string, args ...interface{}) (Result, error)
+	DatabaseList() []string
+
+	Run(ctx context.Context, name, query string, args ...any) (Result, error)
 }

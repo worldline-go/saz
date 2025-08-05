@@ -27,7 +27,11 @@ func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 		return nil, errors.New("postgres configuration is nil")
 	}
 
-	dbConn, err := database.Connect(ctx, "pgx", cfg.Database.DBDatasource)
+	if err := MigrateDB(ctx, &cfg.Migrate); err != nil {
+		return nil, fmt.Errorf("migrate store postgres: %w", err)
+	}
+
+	dbConn, err := database.Connect(ctx, "pgx", cfg.DBDatasource)
 	if err != nil {
 		return nil, fmt.Errorf("connect to store postgres: %w", err)
 	}
@@ -58,5 +62,6 @@ func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
 	// if err := s.db.GetContext(ctx, &note, query, id); err != nil {
 	// 	return config.Note{}, fmt.Errorf("get note by id %s: %w", id, err)
 	// }
-	return note, nil
+	// return note, nil
+	return nil, fmt.Errorf("Get method not implemented for Postgres store; %w", service.ErrNotExists)
 }

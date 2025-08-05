@@ -48,12 +48,13 @@ type Migrate struct {
 	DBDatasource string `cfg:"db_datasource" log:"-"`
 	DBType       string `cfg:"db_type"`
 	DBSchema     string `cfg:"db_schema"`
-	DBTable      string `cfg:"db_table"      default:"saz_migrations"`
+	DBTable      string `cfg:"db_table"`
 }
 
 type StorePostgres struct {
-	Database Database `cfg:"database"`
-	Migrate  Migrate  `cfg:"migrate"`
+	DBDatasource string  `cfg:"db_datasource" log:"-"`
+	DBSchema     string  `cfg:"db_schema"`
+	Migrate      Migrate `cfg:"migrate"`
 }
 
 func Load(ctx context.Context) (*Config, error) {

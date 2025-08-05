@@ -26,7 +26,7 @@ func MigrateDB(ctx context.Context, cfg *config.Migrate) error {
 		return fmt.Errorf("migrate database fs sub: %w", err)
 	}
 
-	db, err := database.Connect(ctx, cfg.DBType, cfg.DBDatasource)
+	db, err := database.Connect(ctx, "pgx", cfg.DBDatasource)
 	if err != nil {
 		return fmt.Errorf("migrate database connect: %w", err)
 	}

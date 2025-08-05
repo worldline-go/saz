@@ -22,6 +22,7 @@ type Config struct {
 	LogLevel string              `cfg:"log_level" default:"info"`
 	Server   Server              `cfg:"server"`
 	Database map[string]Database `cfg:"database"`
+	Store    Store               `cfg:"store"`
 
 	Telemetry tell.Config `cfg:"telemetry"`
 }
@@ -34,8 +35,25 @@ type Server struct {
 }
 
 type Database struct {
+	DBDatasource string `cfg:"db_datasource" log:"-"`
 	DBType       string `cfg:"db_type"`
-	DBDatasource string `cfg:"db_datasource"`
+	DBSchema     string `cfg:"db_schema"`
+}
+
+type Store struct {
+	Postgres *StorePostgres `cfg:"postgres"`
+}
+
+type Migrate struct {
+	DBDatasource string `cfg:"db_datasource" log:"-"`
+	DBType       string `cfg:"db_type"`
+	DBSchema     string `cfg:"db_schema"`
+	DBTable      string `cfg:"db_table"      default:"saz_migrations"`
+}
+
+type StorePostgres struct {
+	Database Database `cfg:"database"`
+	Migrate  Migrate  `cfg:"migrate"`
 }
 
 func Load(ctx context.Context) (*Config, error) {

@@ -11,6 +11,7 @@ import (
 	"github.com/worldline-go/saz/internal/database"
 	"github.com/worldline-go/saz/internal/server"
 	"github.com/worldline-go/saz/internal/service"
+	"github.com/worldline-go/saz/internal/store"
 	"github.com/worldline-go/tell"
 )
 
@@ -40,7 +41,13 @@ func run(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	svc := service.New(db)
+	st, err := store.New(ctx, cfg.Store)
+	if err != nil {
+		return fmt.Errorf("init store; %w", err)
+	}
+	defer st.Close()
+
+	svc := service.New(db, st)
 
 	srv, err := server.New(ctx, cfg.Server, svc)
 	if err != nil {

@@ -3,6 +3,7 @@ module github.com/worldline-go/saz
 go 1.24
 
 require (
+	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/microsoft/go-mssqldb v1.9.2
@@ -16,6 +17,7 @@ require (
 	github.com/rakunlabs/into v0.4.1
 	github.com/rakunlabs/logi v0.4.1
 	github.com/worldline-go/conn v0.1.5
+	github.com/worldline-go/igmigrator/v2 v2.4.0
 	github.com/worldline-go/tell v0.6.1
 	github.com/worldline-go/tell/metric/metrichttp v0.6.3
 	github.com/worldline-go/tell/trace/tracehttp v0.1.0

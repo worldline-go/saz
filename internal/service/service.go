@@ -1,13 +1,13 @@
 package service
 
-import "github.com/worldline-go/saz/internal/database"
-
 type Service struct {
-	db *database.Database
+	db    Database
+	store Storer
 }
 
-func New(db *database.Database) *Service {
+func New(db Database, store Storer) *Service {
 	return &Service{
-		db: db,
+		db:    db,
+		store: store,
 	}
 }

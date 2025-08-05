@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
 	"golang.org/x/exp/slog"
 
@@ -31,7 +32,7 @@ func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, er
 	}
 
 	for name, dbConfig := range cfg {
-		dbConn, err := sqlx.ConnectContext(ctx, dbConfig.DBType, dbConfig.DBDatasource)
+		dbConn, err := database.Connect(ctx, dbConfig.DBType, dbConfig.DBDatasource)
 		if err != nil {
 			db.Close()
 

@@ -2,7 +2,7 @@
   import Name from "@/components/Name.svelte";
   import Output from "@/components/Output.svelte";
   import Query from "@/components/Query.svelte";
-  import { Plus } from "@lucide/svelte";
+  import { GripVertical, Plus } from "@lucide/svelte";
   import type { Cell } from "@/helper/model";
   import { storeDatabases } from "@/store/store";
   import { ulid } from "ulid";
@@ -24,15 +24,29 @@
   };
 </script>
 
-<div class="grid grid-cols-1 h-full w-full">
-  <div class="relative flex flex-col h-full w-full">
+<div class="grid grid-rows-[1fr_auto] h-full w-full overflow-y-auto">
+  <div class="flex flex-col h-full w-full min-h-0">
     <div class="border-b border-gray-300 mb-1">
       <Name />
     </div>
 
-    <div class="flex flex-col h-full w-full py-2">
+    <div
+      class="relative flex flex-col h-full w-full py-2 overflow-y-auto min-h-0"
+    >
       {#each cells as cell, index (cell.id)}
-        <div class="border-b border-gray-300">
+        <div class="border-b border-gray-300 flex flex-row w-full">
+          <div class="flex gap-1">
+            <button
+              class="p-1 text-gray-500 hover:bg-gray-200 hover:cursor-pointer"
+            >
+              <GripVertical />
+            </button>
+            <button
+              class="text-gray-500 hover:bg-gray-200 hover:cursor-pointer"
+            >
+              <GripVertical />
+            </button>
+          </div>
           <Query
             bind:query={cell.content}
             bind:db={cell.db_type}

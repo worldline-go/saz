@@ -27,15 +27,18 @@
 
 <div
   class={[
-    "grid grid-flow-col grid-cols-1 bg-gray-100",
+    "grid grid-flow-col grid-cols-1 bg-gray-100 w-full",
     fullScreen
       ? "absolute top-0 left-0 h-auto w-full bg-white z-10"
-      : "hover:bg-white",
+      : "hover:bg-white focus:bg-white",
   ]}
 >
   <div>
     <div class="flex justify-between border-b border-gray-300 pb-1">
-      <select class="px-2 py-1 hover:cursor-pointer" bind:value={db}>
+      <select
+        class="select border-none rounded-none hover:cursor-pointer hover:bg-white px-2 py-1 w-28"
+        bind:value={db}
+      >
         {#each $storeDatabases as database}
           <option value={database}>{database}</option>
         {/each}

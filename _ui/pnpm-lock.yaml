@@ -11,6 +11,9 @@ importers:
       '@codemirror/lang-sql':
         specifier: ^6.9.1
         version: 6.9.1
+      '@lucide/svelte':
+        specifier: ^0.515.0
+        version: 0.515.0(svelte@5.34.7)
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.1.0
         version: 5.1.0(svelte@5.34.7)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.2)(sass@1.89.2)(yaml@2.5.0))
@@ -32,6 +35,9 @@ importers:
       axios:
         specifier: ^1.10.0
         version: 1.10.0
+      daisyui:
+        specifier: ^5.0.50
+        version: 5.0.50
       gh-pages:
         specifier: ^6.3.0
         version: 6.3.0
@@ -86,6 +92,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+      ulid:
+        specifier: ^3.0.1
+        version: 3.0.1
       vite:
         specifier: ^6.3.5
         version: 6.3.5(jiti@2.4.2)(lightningcss@1.30.1)(sass-embedded@1.89.2)(sass@1.89.2)(yaml@2.5.0)
@@ -435,6 +444,11 @@ packages:
 
   '@lezer/lr@1.4.2':
     resolution: {integrity: sha512-pu0K1jCIdnQ12aWNaAVU5bzi7Bd1w54J3ECgANPmYLtQKP0HBj2cE/5coBD66MT10xbtIuUr7tg0Shbsvk0mDA==}
+
+  '@lucide/svelte@0.515.0':
+    resolution: {integrity: sha512-CEAyqcZmNBfYzVgaRmK2RFJP5tnbXxekRyDk0XX/eZQRfsJmkDvmQwXNX8C869BgNeryzmrRyjHhUL6g9ZOHNA==}
+    peerDependencies:
+      svelte: ^5
 
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
@@ -1040,6 +1054,9 @@ packages:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
     engines: {node: '>=4'}
     hasBin: true
+
+  daisyui@5.0.50:
+    resolution: {integrity: sha512-c1PweK5RI1C76q58FKvbS4jzgyNJSP6CGTQ+KkZYzADdJoERnOxFoeLfDHmQgxLpjEzlYhFMXCeodQNLCC9bow==}
 
   debug@4.3.6:
     resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
@@ -2091,6 +2108,10 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  ulid@3.0.1:
+    resolution: {integrity: sha512-dPJyqPzx8preQhqq24bBG1YNkvigm87K8kVEHCD+ruZg24t6IFEFv00xMWfxcC4djmFtiTLdFuADn4+DOz6R7Q==}
+    hasBin: true
+
   universalify@2.0.0:
     resolution: {integrity: sha512-hAZsKq7Yy11Zu1DE0OzWjw7nnLZmJZYTDZZyEFHZdUhV8FkH5MCfoU1XMaxXovpyW5nq5scPqq0ZDP9Zyl04oQ==}
     engines: {node: '>= 10.0.0'}
@@ -2465,6 +2486,10 @@ snapshots:
   '@lezer/lr@1.4.2':
     dependencies:
       '@lezer/common': 1.2.3
+
+  '@lucide/svelte@0.515.0(svelte@5.34.7)':
+    dependencies:
+      svelte: 5.34.7
 
   '@marijn/find-cluster-break@1.0.2': {}
 
@@ -3010,6 +3035,8 @@ snapshots:
       source-map-js: 1.2.0
 
   cssesc@3.0.0: {}
+
+  daisyui@5.0.50: {}
 
   debug@4.3.6:
     dependencies:
@@ -4011,6 +4038,8 @@ snapshots:
       prelude-ls: 1.2.1
 
   typescript@5.8.3: {}
+
+  ulid@3.0.1: {}
 
   universalify@2.0.0: {}
 

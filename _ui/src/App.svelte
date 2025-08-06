@@ -8,22 +8,20 @@
   import { addToast } from "@/store/toast";
 
   import Sidebar from "@/components/Sidebar.svelte";
-  import Navbar from "@/components/Navbar.svelte";
   import Toast from "./components/Toast.svelte";
 
   import MainPage from "@/pages/Main.svelte";
-  import TestPage from "@/pages/Test.svelte";
-  import NotFound from "./pages/NotFound.svelte";
+
+  import { requestDatabases } from "@/helper/call";
 
   let layout: HTMLElement;
-  let mounted = false;
+  let mounted = $state(false);
 
   const routes = new Map<string | RegExp, RouteComponent>();
-  routes.set("/test", TestPage);
-  routes.set("/", MainPage);
-  routes.set("/*", NotFound);
+  routes.set("/*", MainPage);
 
   onMount(async () => {
+    await requestDatabases();
     mounted = true;
   });
 </script>
@@ -45,9 +43,6 @@
     </div>
   {:else}
     <Sidebar />
-    <div class="h-full w-full grid grid-rows-[1.75rem]">
-      <Navbar />
-      <Router {routes} />
-    </div>
+    <Router {routes} />
   {/if}
 </div>

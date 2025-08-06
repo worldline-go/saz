@@ -17,3 +17,7 @@ func New(db Database, store Storer) *Service {
 func (s *Service) Run(ctx context.Context, name, query string, args ...any) (Result, error) {
 	return s.db.Run(ctx, name, query, args...)
 }
+
+func (s *Service) DatabaseList() []string {
+	return s.db.DatabaseList()
+}

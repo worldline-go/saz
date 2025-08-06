@@ -49,3 +49,11 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 		Data: result.Rows(),
 	})
 }
+
+func (s *Server) databaseList(w http.ResponseWriter, r *http.Request) {
+	dbList := s.service.DatabaseList()
+
+	ada.JSON(w, http.StatusOK, Response{
+		Data: dbList,
+	})
+}

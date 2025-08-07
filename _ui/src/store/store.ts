@@ -8,7 +8,13 @@ let navbar = {
 
 let noteIds: idName[] = [];
 
+export type QueryOutput = {
+  rows_affected: number;
+  data: Record<string, any>[];
+  columns: string[];
+}
+
 export const storeNavbar = writable(navbar);
 export const storeInfo = writable<info | null>(null);
-export const storeOutput = writable<Record<string, any>[]>([]);
+export const storeOutput = writable<QueryOutput | null>(null);
 export const storeNoteIds = writable<idName[]>(noteIds);

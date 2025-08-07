@@ -6,13 +6,16 @@ import (
 )
 
 type Result struct {
+	columns   []string
 	duration  time.Duration
 	sqlResult sql.Result
 	rows      []map[string]any
 }
 
-func (r *Result) RowsAffected() (int64, error) {
-	return r.sqlResult.RowsAffected()
+func (r *Result) RowsAffected() int64 {
+	// v, _ := r.sqlResult.RowsAffected()
+	// return v
+	return 0
 }
 
 func (r *Result) Duration() time.Duration {
@@ -21,4 +24,8 @@ func (r *Result) Duration() time.Duration {
 
 func (r *Result) Rows() []map[string]any {
 	return r.rows
+}
+
+func (r *Result) Columns() []string {
+	return r.columns
 }

@@ -16,10 +16,10 @@
   const runQuery = () => {
     requestRun({ name: db, query: query })
       .then((response) => {
-        storeOutput.set(response.data?.data || []);
+        storeOutput.set(response.data);
       })
       .catch((error) => {
-        storeOutput.set([]);
+        storeOutput.set(null);
         addToast("Error running query: " + error.message, "alert");
       });
   };

@@ -45,8 +45,9 @@ type Storer interface {
 // /////////////////////////////////////////////
 
 type Result interface {
+	Columns() []string
 	Rows() []map[string]any
-	RowsAffected() (int64, error)
+	RowsAffected() int64
 	Duration() time.Duration
 }
 

@@ -31,6 +31,11 @@ func (d *Database) Run(ctx context.Context, name, query string, args ...any) (se
 	}
 	defer rowsIter.Close()
 
+	columns, err := rowsIter.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("get columns: %w", err)
+	}
+
 	for rowsIter.Next() {
 		row := make(map[string]any)
 		if err := rowsIter.MapScan(row); err != nil {
@@ -43,6 +48,7 @@ func (d *Database) Run(ctx context.Context, name, query string, args ...any) (se
 	}
 
 	return &Result{
+		columns:  columns,
 		rows:     rows,
 		duration: time.Since(start),
 	}, nil

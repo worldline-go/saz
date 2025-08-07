@@ -47,7 +47,9 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ada.JSON(w, http.StatusOK, Response{
-		Data: result.Rows(),
+		RowsAffected: result.RowsAffected(),
+		Columns:      result.Columns(),
+		Data:         result.Rows(),
 	})
 }
 

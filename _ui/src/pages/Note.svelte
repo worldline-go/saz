@@ -13,8 +13,6 @@
   import { ulid } from "ulid";
   import { reorder, useSortable } from "@/helper/sort.svelte";
   import { requestNote, requestSave } from "@/helper/call";
-  import { onMount } from "svelte";
-  import { location, querystring } from "svelte-spa-router";
 
   let { params } = $props<{ params: { id: string } }>();
   let notebookID = $state<string>(ulid());
@@ -168,7 +166,7 @@
     </div>
   </div>
 
-  <div class="border-t border-gray-300 px-1">
+  <div class="border-t border-black">
     <Output />
   </div>
 </div>

@@ -1,8 +1,12 @@
 <script lang="ts">
   import active from "svelte-spa-router/active";
+  import { storeNoteIds } from "@/store/store";
+  import { Plus } from "@lucide/svelte";
+  import { push } from "svelte-spa-router";
+  import { ulid } from "ulid";
 </script>
 
-<div class="sidebar-bg border-r border-black">
+<div class="bg-gray-100 border-r border-black">
   <div class="sticky top-0 overflow-auto max-h-svh no-scrollbar">
     <div class="border-b border-black h-7">
       <a
@@ -14,32 +18,45 @@
           inactiveClassName: "bg-white text-black",
         }}
       >
-        <span class="block px-2">Main</span>
+        <span class="block px-2">SAZ</span>
       </a>
     </div>
-    <div class="border-b border-black h-7">
-      <a
-        href="#/test"
-        class="block h-full hover:bg-slate-700 hover:text-white"
-        use:active={{
-          path: `/test`,
-          className: "bg-black text-white",
-          inactiveClassName: "bg-white text-black",
+    <div
+      class="border-b border-black h-7 pl-2 flex justify-between items-center"
+    >
+      <span>Notes</span>
+      <button
+        class="text-black px-2 h-full hover:cursor-pointer hover:bg-blue-500 hover:text-white"
+        onclick={() => {
+          let id = ulid();
+
+          // redirect to the new note
+          push(`/note/${id}`);
         }}
       >
-        <span class="block px-2">Test</span>
-      </a>
+        <Plus />
+      </button>
     </div>
+    {#each $storeNoteIds as note}
+      <div class="border-b border-black h-7">
+        <a
+          href="#/note/{note.id}"
+          class="block h-full hover:bg-slate-700 hover:text-white"
+          use:active={{
+            path: `/note/${note.id}`,
+            className: "bg-black text-white",
+            inactiveClassName: "bg-white text-black",
+          }}
+        >
+          <span class="block px-2">{note.name}</span>
+        </a>
+      </div>
+    {/each}
   </div>
 </div>
 
 <style>
   @reference "tailwindcss";
-
-  .sidebar-bg {
-    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAAB1JREFUKFNjvHjx4n99fX1GBgKAcVQhvhCifvAAAM43KAsXWPfwAAAAAElFTkSuQmCC)
-      repeat;
-  }
 
   :global(.sb-link-active) {
     @apply bg-black text-white;

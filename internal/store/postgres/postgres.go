@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/service"
+	"github.com/worldline-go/types"
 
 	_ "github.com/worldline-go/conn/database/postgres"
 
@@ -57,11 +59,59 @@ func (s *Postgres) Close() {
 // ////////////////////////////////////////
 
 func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
-	// var note config.Note
-	// query := "SELECT id FROM notes WHERE id = $1"
-	// if err := s.db.GetContext(ctx, &note, query, id); err != nil {
-	// 	return config.Note{}, fmt.Errorf("get note by id %s: %w", id, err)
-	// }
-	// return note, nil
-	return nil, fmt.Errorf("Get method not implemented for Postgres store; %w", service.ErrNotExists)
+	if id == "" {
+		return nil, fmt.Errorf("note ID is empty; %w", service.ErrBadRequest)
+	}
+
+	var note Note
+	isFound, err := s.goqu.From("notes").Where(goqu.Ex{"id": id}).ScanStructContext(ctx, &note)
+	if err != nil {
+		return nil, fmt.Errorf("get note by ID %s: %w", id, err)
+	}
+
+	if !isFound {
+		return nil, fmt.Errorf("note with ID %s not found; %w", id, service.ErrNotExists)
+	}
+
+	return &service.Note{
+		ID:      note.ID,
+		Name:    note.Name,
+		Content: note.Content.V,
+	}, nil
+}
+
+func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
+	dbNote := Note{
+		ID:        note.ID,
+		Name:      note.Name,
+		Content:   types.NewJSON(note.Content),
+		UpdatedBy: types.NewNull(service.UserContext(ctx)),
+		UpdatedAt: types.NewTimeNull(time.Now()),
+		CreatedAt: types.NewTimeNull(time.Now()),
+	}
+
+	// insert or update the note with goqu
+	_, err := s.goqu.Insert("notes").Rows(dbNote).OnConflict(goqu.DoUpdate("id", dbNote)).Executor().ExecContext(ctx)
+	if err != nil {
+		return fmt.Errorf("exec upsert note: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Postgres) GetNotes(ctx context.Context) ([]service.IDName, error) {
+	var notes []Note
+	if err := s.goqu.From("notes").Select("id", "name").ScanStructsContext(ctx, &notes); err != nil {
+		return nil, fmt.Errorf("get notes: %w", err)
+	}
+
+	idNames := make([]service.IDName, len(notes))
+	for i, note := range notes {
+		idNames[i] = service.IDName{
+			ID:   note.ID,
+			Name: note.Name,
+		}
+	}
+
+	return idNames, nil
 }

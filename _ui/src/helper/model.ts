@@ -7,11 +7,21 @@ export type cell = {
 };
 
 export type notebook = {
+  id: string;
   name: string;
-  cells: cell[];
+  content: content;
 };
+
+export type content = {
+  cells: cell[];
+}
 
 export type info = {
   version: string;
   databases?: string[];
+};
+
+export type idName = {
+  id: string;
+  name: string;
 };

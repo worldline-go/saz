@@ -1,6 +1,9 @@
 package service
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 type Service struct {
 	db    Database
@@ -20,4 +23,23 @@ func (s *Service) Run(ctx context.Context, name, query string, args ...any) (Res
 
 func (s *Service) DatabaseList() []string {
 	return s.db.DatabaseList()
+}
+
+func (s *Service) GetNote(ctx context.Context, id string) (*Note, error) {
+	return s.store.Get(ctx, id)
+}
+
+func (s *Service) SaveNote(ctx context.Context, note *Note) error {
+	if note == nil {
+		return fmt.Errorf("note is nil; %w", ErrBadRequest)
+	}
+	if note.ID == "" || note.Name == "" {
+		return fmt.Errorf("invalid Name and ID; %w", ErrBadRequest)
+	}
+
+	return s.store.Save(ctx, note)
+}
+
+func (s *Service) GetNotes(ctx context.Context) ([]IDName, error) {
+	return s.store.GetNotes(ctx)
 }

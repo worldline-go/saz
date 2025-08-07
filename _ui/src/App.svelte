@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  // import type { ComponentType } from "svelte";
-  type RouteComponent = typeof MainPage;
+  type RouteComponent = typeof NotePage;
   import Router from "svelte-spa-router";
 
   import { storeNavbar } from "@/store/store";
@@ -10,18 +9,21 @@
   import Sidebar from "@/components/Sidebar.svelte";
   import Toast from "./components/Toast.svelte";
 
+  import NotePage from "@/pages/Note.svelte";
   import MainPage from "@/pages/Main.svelte";
 
-  import { requestInfo } from "@/helper/call";
+  import { requestInfo, requestNotes } from "@/helper/call";
 
   let layout: HTMLElement;
   let mounted = $state(false);
 
   const routes = new Map<string | RegExp, RouteComponent>();
-  routes.set("/*", MainPage);
+  routes.set("/note/:id", NotePage);
+  routes.set("/", MainPage);
 
   onMount(async () => {
     await requestInfo();
+    await requestNotes();
     mounted = true;
   });
 </script>
@@ -32,7 +34,7 @@
   bind:this={layout}
   class={[
     "grid grid-flow-col h-full w-full relative overflow-y-auto bg-slate-100",
-    $storeNavbar.sideBarOpen ? "grid-cols-[8rem]" : "grid-cols-[0]",
+    $storeNavbar.sideBarOpen ? "grid-cols-[12rem]" : "grid-cols-[0]",
   ]}
 >
   {#if !mounted}

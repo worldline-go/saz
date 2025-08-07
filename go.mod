@@ -21,6 +21,7 @@ require (
 	github.com/worldline-go/tell v0.6.1
 	github.com/worldline-go/tell/metric/metrichttp v0.6.3
 	github.com/worldline-go/tell/trace/tracehttp v0.1.0
+	github.com/worldline-go/types v0.4.9
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 )
 

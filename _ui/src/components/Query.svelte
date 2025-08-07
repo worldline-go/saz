@@ -1,7 +1,7 @@
 <script lang="ts">
   import Editor from "@/components/Editor.svelte";
   import { requestRun } from "@/helper/call";
-  import { storeDatabases, storeOutput } from "@/store/store";
+  import { storeInfo, storeOutput } from "@/store/store";
   import { addToast } from "@/store/toast";
   import { Scan, Ellipsis, Trash } from "@lucide/svelte";
 
@@ -42,7 +42,7 @@
           class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white px-2 py-1 w-28"
           bind:value={db}
         >
-          {#each $storeDatabases as database}
+          {#each $storeInfo?.databases ?? [] as database}
             <option value={database}>{database}</option>
           {/each}
         </select>

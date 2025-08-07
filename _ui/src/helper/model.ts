@@ -10,3 +10,8 @@ export type notebook = {
   name: string;
   cells: cell[];
 };
+
+export type info = {
+  version: string;
+  databases?: string[];
+};

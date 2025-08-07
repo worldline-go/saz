@@ -9,7 +9,7 @@
     Save,
   } from "@lucide/svelte";
   import type { cell, notebook } from "@/helper/model";
-  import { storeDatabases } from "@/store/store";
+  import { storeInfo } from "@/store/store";
   import { ulid } from "ulid";
   import { reorder, useSortable } from "@/helper/sort.svelte";
 
@@ -21,7 +21,7 @@
   const addCell = () => {
     const newCell: cell = {
       id: ulid(),
-      db_type: $storeDatabases[0] || "",
+      db_type: $storeInfo?.databases?.[0] || "",
       content: "",
       description: "",
       collapsed: false,

@@ -5,3 +5,8 @@ type Response struct {
 	Error   string `json:"error,omitempty"`
 	Data    any    `json:"data,omitempty"`
 }
+
+type Info struct {
+	Databases []string `json:"databases"`
+	Version   string   `json:"version"`
+}

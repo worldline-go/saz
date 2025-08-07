@@ -12,7 +12,7 @@
 
   import MainPage from "@/pages/Main.svelte";
 
-  import { requestDatabases } from "@/helper/call";
+  import { requestInfo } from "@/helper/call";
 
   let layout: HTMLElement;
   let mounted = $state(false);
@@ -21,7 +21,7 @@
   routes.set("/*", MainPage);
 
   onMount(async () => {
-    await requestDatabases();
+    await requestInfo();
     mounted = true;
   });
 </script>

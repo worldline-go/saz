@@ -1,5 +1,6 @@
-import { storeDatabases } from "@/store/store";
+import { storeInfo } from "@/store/store";
 import axios from "axios";
+import type { info } from "./model";
 
 type RunRequest = {
   name: string;
@@ -11,13 +12,13 @@ export const requestRun = (data: RunRequest) => {
   return axios.post("/api/v1/run", data);
 };
 
-export const requestDatabases = () => {
+export const requestInfo = () => {
   try {
-    return axios.get("/api/v1/databases").then(response => {
-      const databases = response.data?.data || [];
-      storeDatabases.set(databases);
+    return axios.get("/api/v1/info").then(response => {
+      const info = response.data?.data as info;
+      storeInfo.set(info);
     });
   } catch (error) {
-    console.error("Error fetching databases:", error);
+    console.error("Error fetching info:", error);
   }
 };

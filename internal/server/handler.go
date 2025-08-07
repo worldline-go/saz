@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/rakunlabs/ada"
+	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/service"
 )
 
@@ -50,10 +51,13 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) databaseList(w http.ResponseWriter, r *http.Request) {
+func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	dbList := s.service.DatabaseList()
 
 	ada.JSON(w, http.StatusOK, Response{
-		Data: dbList,
+		Data: Info{
+			Databases: dbList,
+			Version:   config.ServerVersion,
+		},
 	})
 }

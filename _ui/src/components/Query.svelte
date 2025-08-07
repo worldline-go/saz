@@ -7,8 +7,10 @@
 
   let {
     query = $bindable(),
+    description = $bindable(),
     db = $bindable(),
     deleteFunc = $bindable(),
+    collapsed = $bindable(false),
   } = $props();
 
   const runQuery = () => {
@@ -29,20 +31,28 @@
   class={[
     "grid grid-flow-col grid-cols-1 bg-gray-100 w-full",
     fullScreen
-      ? "absolute top-0 left-0 h-auto w-full bg-white z-10"
-      : "hover:bg-white focus:bg-white",
+      ? "absolute top-0 left-0 h-full w-full bg-gray-50 z-10"
+      : "hover:bg-gray-50",
   ]}
 >
   <div>
     <div class="flex justify-between border-b border-gray-300 pb-1">
-      <select
-        class="select border-none rounded-none hover:cursor-pointer hover:bg-white px-2 py-1 w-28"
-        bind:value={db}
-      >
-        {#each $storeDatabases as database}
-          <option value={database}>{database}</option>
-        {/each}
-      </select>
+      <div>
+        <select
+          class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white px-2 py-1 w-28"
+          bind:value={db}
+        >
+          {#each $storeDatabases as database}
+            <option value={database}>{database}</option>
+          {/each}
+        </select>
+        <input
+          class="input border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white focus:bg-white px-2 py-1 w-64"
+          type="text"
+          placeholder="Describe your query"
+          bind:value={description}
+        />
+      </div>
       <button
         class="text-black py-1 px-2 hover:cursor-pointer hover:bg-red-500 hover:text-white"
         onclick={runQuery}
@@ -50,8 +60,8 @@
         Run Query
       </button>
     </div>
-    <div class="overflow-y-auto ov">
-      <Editor bind:value={query} />
+    <div class="overflow-y-auto">
+      <Editor bind:value={query} collapse={collapsed} />
     </div>
   </div>
 

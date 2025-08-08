@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"iter"
 	"time"
 
 	"github.com/worldline-go/types"
@@ -45,6 +46,7 @@ type Mode struct {
 	Name    string `json:"name"`
 	DBType  string `json:"db_type"`
 	Table   string `json:"table"`
+	Wipe    bool   `json:"wipe"`
 }
 
 type Storer interface {
@@ -67,4 +69,7 @@ type Database interface {
 
 	Query(ctx context.Context, name, query string) (Result, error)
 	Exec(ctx context.Context, name, query string) (Result, error)
+
+	IterGet(ctx context.Context, name, query string) (iter.Seq2[map[string]any, error], error)
+	IterSet(ctx context.Context, name, table string, wipe bool, rows iter.Seq2[map[string]any, error]) (Result, error)
 }

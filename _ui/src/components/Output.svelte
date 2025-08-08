@@ -8,6 +8,16 @@
   <div class="flex items-center bg-gray-300 justify-between">
     <span class="px-2 text-sm font-semibold">Query Output</span>
     <div class="flex items-center">
+      {#if $storeOutput?.rows_affected}
+        <span class="text-xs text-gray-600 px-2">
+          Rows Affected: {$storeOutput.rows_affected}
+        </span>
+      {/if}
+      {#if $storeOutput?.duration}
+        <span class="text-xs text-gray-600 px-2">
+          Duration: {$storeOutput.duration}
+        </span>
+      {/if}
       <button class=" text-gray-500 hover:bg-gray-200 hover:cursor-pointer">
         <ArrowLeft />
       </button>

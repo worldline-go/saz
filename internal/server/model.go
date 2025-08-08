@@ -6,6 +6,7 @@ type Response struct {
 	Data         any      `json:"data,omitempty"`
 	Columns      []string `json:"columns,omitempty"`
 	RowsAffected int64    `json:"rows_affected,omitempty"`
+	Duration     string   `json:"duration,omitempty"`
 }
 
 type Info struct {

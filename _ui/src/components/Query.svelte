@@ -10,12 +10,14 @@
     TrainTrack,
     BotOff,
     Play,
-    PencilOff,
-    Pencil,
     Wifi,
     WifiOff,
     Captions,
     CaptionsOff,
+    BrushCleaning,
+    Route,
+    RouteOff,
+    ShieldPlus,
   } from "@lucide/svelte";
   import type { cell as cellType } from "@/helper/model";
 
@@ -46,6 +48,7 @@
           name: "transfer",
           db_type: cell.db_type,
           table: "",
+          wipe: false,
         };
         break;
       default:
@@ -115,16 +118,31 @@
         <div class="flex flex-col items-start border-l border-gray-300">
           <span
             class={[
-              "w-48 px-2 py-1 border-b border-gray-300 flex items-center justify-between",
+              "w-48 border-b border-gray-300 flex items-center justify-between",
               cell.mode.enabled ? "bg-green-100" : "bg-red-100",
             ]}
           >
-            Transfer Mode
-            <label class="swap">
-              <input type="checkbox" bind:checked={cell.mode.enabled} />
-              <div class="swap-on"><Pencil class="px-1" /></div>
-              <div class="swap-off"><PencilOff class="px-1" /></div>
-            </label>
+            <span class="px-2">Transfer Mode</span>
+            <div>
+              <label class="swap hover:bg-yellow-300">
+                <input type="checkbox" bind:checked={cell.mode.wipe} />
+                <div class="swap-on" title="Append to existing data">
+                  <BrushCleaning class="px-1" />
+                </div>
+                <div class="swap-off" title="Wipe before transfer">
+                  <ShieldPlus class="px-1" />
+                </div>
+              </label>
+              <label class="swap hover:bg-yellow-300">
+                <input type="checkbox" bind:checked={cell.mode.enabled} />
+                <div class="swap-on" title="Disable Mode">
+                  <Route class="px-1" />
+                </div>
+                <div class="swap-off" title="Enable Mode">
+                  <RouteOff class="px-1" />
+                </div>
+              </label>
+            </div>
           </span>
           <select
             class="select border-none rounded-none hover:cursor-pointer hover:bg-white px-2 h-7"

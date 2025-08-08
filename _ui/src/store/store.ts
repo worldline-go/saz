@@ -9,9 +9,10 @@ let navbar = {
 let noteIds: idName[] = [];
 
 export type QueryOutput = {
-  rows_affected: number;
+  rows_affected?: number;
   data: Record<string, any>[];
   columns: string[];
+  duration?: string;
 }
 
 export const storeNavbar = writable(navbar);

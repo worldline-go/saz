@@ -50,6 +50,7 @@
         id: cell.id,
         db_type: cell.db_type,
         content: cell.content,
+        mode: cell.mode,
         description: cell.description,
         collapsed: cell.collapsed,
         enabled: cell.enabled || true,

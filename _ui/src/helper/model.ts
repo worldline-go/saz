@@ -14,6 +14,7 @@ export type modeTransfer = {
   name: "transfer";
   db_type: string;
   table: string;
+  wipe: boolean;
 }
 
 export type notebook = {

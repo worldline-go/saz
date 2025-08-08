@@ -24,7 +24,42 @@ func (s *Service) Run(ctx context.Context, cell Cell) (Result, error) {
 		return nil, fmt.Errorf("invalid cell; %w", ErrBadRequest)
 	}
 
-	logi.Ctx(ctx).Debug("running cell", "db_type", cell.DBType, "content", cell.Content, "result", cell.Result.V)
+	logi.Ctx(ctx).Debug("running cell",
+		"db_type", cell.DBType,
+		"content", cell.Content,
+		"result", cell.Result.V,
+		"mode", cell.Mode.V,
+	)
+
+	if cell.Mode.V.Enabled {
+		switch cell.Mode.V.Name {
+		case "transfer":
+			if cell.Mode.V.Table == "" {
+				return nil, fmt.Errorf("transfer mode requires a table name; %w", ErrBadRequest)
+			}
+			iterGet, err := s.db.IterGet(ctx, cell.DBType, cell.Content)
+			if err != nil {
+				return nil, fmt.Errorf("get iterator: %w", err)
+			}
+
+			// TODO: make better handling of iterators
+			defer func() {
+				for range iterGet {
+					return
+				}
+			}()
+
+			result, err := s.db.IterSet(ctx, cell.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, iterGet)
+			if err != nil {
+				return nil, fmt.Errorf("set iterator: %w", err)
+			}
+
+			return result, nil
+		default:
+			return nil, fmt.Errorf("unsupported mode %s; %w", cell.Mode.V.Name, ErrBadRequest)
+		}
+	}
+
 	if cell.Result.V {
 		return s.db.Query(ctx, cell.DBType, cell.Content)
 	}

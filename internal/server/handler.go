@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/rakunlabs/ada"
 	"github.com/worldline-go/saz/internal/config"
@@ -45,6 +46,7 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 		RowsAffected: result.RowsAffected(),
 		Columns:      result.Columns(),
 		Data:         result.Rows(),
+		Duration:     result.Duration().Truncate(time.Microsecond).String(),
 	})
 }
 

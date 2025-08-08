@@ -3,11 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
-	"golang.org/x/exp/slog"
 
 	_ "github.com/alexbrainman/odbc"
 	_ "github.com/godror/godror"

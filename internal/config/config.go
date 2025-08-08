@@ -45,13 +45,15 @@ type Store struct {
 }
 
 type Migrate struct {
-	DBDatasource string `cfg:"db_datasource" log:"-"`
-	DBType       string `cfg:"db_type"`
-	DBSchema     string `cfg:"db_schema"`
-	DBTable      string `cfg:"db_table"`
+	DBDatasource string            `cfg:"db_datasource" log:"-"`
+	DBType       string            `cfg:"db_type"`
+	DBSchema     string            `cfg:"db_schema"`
+	DBTable      string            `cfg:"db_table"`
+	Values       map[string]string `cfg:"values"`
 }
 
 type StorePostgres struct {
+	TablePrefix  string  `cfg:"table_prefix"`
 	DBDatasource string  `cfg:"db_datasource" log:"-"`
 	DBSchema     string  `cfg:"db_schema"`
 	Migrate      Migrate `cfg:"migrate"`

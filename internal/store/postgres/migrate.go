@@ -38,6 +38,7 @@ func MigrateDB(ctx context.Context, cfg *config.Migrate) error {
 		Schema:         cfg.DBSchema,
 		MigrationTable: cfg.DBTable,
 		Logger:         slog.Default(),
+		Values:         cfg.Values,
 	})
 	if err != nil {
 		return fmt.Errorf("run migrations: %w", err)

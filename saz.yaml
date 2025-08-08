@@ -1,3 +1,6 @@
+server:
+  base_path: "/saz"
+
 database:
   postgres:
     db_datasource: "postgres://postgres@localhost:5432/postgres?sslmode=disable"
@@ -5,6 +8,7 @@ database:
 
 store:
   postgres:
+    table_prefix: "saz_"
     db_datasource: "postgres://postgres@localhost:5432/postgres?sslmode=disable"
     db_type: "pgx"
     migrate:

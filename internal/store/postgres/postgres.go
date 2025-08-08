@@ -20,14 +20,26 @@ import (
 )
 
 type Postgres struct {
-	db   *sqlx.DB
-	goqu *goqu.Database
+	db     *sqlx.DB
+	goqu   *goqu.Database
+	prefix string
 }
 
 func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 	if cfg == nil {
 		return nil, errors.New("postgres configuration is nil")
 	}
+
+	if cfg.Migrate.DBTable == "" {
+		cfg.Migrate.DBTable = "migrations"
+	}
+	cfg.Migrate.DBTable = cfg.TablePrefix + cfg.Migrate.DBTable
+
+	if cfg.Migrate.Values == nil {
+		cfg.Migrate.Values = make(map[string]string)
+	}
+
+	cfg.Migrate.Values["table_prefix"] = cfg.TablePrefix
 
 	if err := MigrateDB(ctx, &cfg.Migrate); err != nil {
 		return nil, fmt.Errorf("migrate store postgres: %w", err)
@@ -43,8 +55,9 @@ func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 	slog.Info("connected to store postgres")
 
 	return &Postgres{
-		db:   dbConn,
-		goqu: dbGoqu,
+		db:     dbConn,
+		goqu:   dbGoqu,
+		prefix: cfg.TablePrefix,
 	}, nil
 }
 
@@ -64,7 +77,7 @@ func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
 	}
 
 	var note Note
-	isFound, err := s.goqu.From("notes").Where(goqu.Ex{"id": id}).ScanStructContext(ctx, &note)
+	isFound, err := s.goqu.From(s.prefix+"notes").Where(goqu.Ex{"id": id}).ScanStructContext(ctx, &note)
 	if err != nil {
 		return nil, fmt.Errorf("get note by ID %s: %w", id, err)
 	}
@@ -93,7 +106,7 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 	}
 
 	// insert or update the note with goqu
-	_, err := s.goqu.Insert("notes").Rows(dbNote).OnConflict(goqu.DoUpdate("id", dbNote)).Executor().ExecContext(ctx)
+	_, err := s.goqu.Insert(s.prefix + "notes").Rows(dbNote).OnConflict(goqu.DoUpdate("id", dbNote)).Executor().ExecContext(ctx)
 	if err != nil {
 		return fmt.Errorf("exec upsert note: %w", err)
 	}
@@ -103,7 +116,7 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 
 func (s *Postgres) GetNotes(ctx context.Context) ([]service.IDName, error) {
 	var notes []NoteIDName
-	if err := s.goqu.From("notes").Select("id", "name").ScanStructsContext(ctx, &notes); err != nil {
+	if err := s.goqu.From(s.prefix+"notes").Select("id", "name").ScanStructsContext(ctx, &notes); err != nil {
 		return nil, fmt.Errorf("get notes: %w", err)
 	}
 

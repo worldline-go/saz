@@ -10,12 +10,12 @@ import { addToast } from "@/store/toast";
 // }
 
 export const requestRun = (data: cell) => {
-  return axios.post("/api/v1/run", data);
+  return axios.post("./api/v1/run", data);
 };
 
 export const requestInfo = async () => {
   try {
-    const response = await axios.get("/api/v1/info");
+    const response = await axios.get("./api/v1/info");
     const info = response.data?.data as info;
     storeInfo.set(info);
   } catch (error) {
@@ -34,7 +34,7 @@ type NoteResponse = {
 
 export const requestNotes = async () => {
   try {
-    const response = await axios.get("/api/v1/notes");
+    const response = await axios.get("./api/v1/notes");
     const notes = response.data as NotesResponse;
     storeNoteIds.set(notes.data);
   } catch (error) {
@@ -45,7 +45,7 @@ export const requestNotes = async () => {
 
 export const requestNote = async (id: string) => {
   try {
-    const response = await axios.get(`/api/v1/notes/${id}`);
+    const response = await axios.get(`./api/v1/notes/${id}`);
     const note = response.data as NoteResponse;
     return note.data;
   } catch (error) {
@@ -56,7 +56,7 @@ export const requestNote = async (id: string) => {
 
 export const requestSave = async (note: notebook) => {
   try {
-    await axios.put(`/api/v1/notes/${note.id}`, note)
+    await axios.put(`./api/v1/notes/${note.id}`, note)
     storeNoteIds.update((ids) => {
       const index = ids.findIndex((n) => n.id === note.id);
       if (index !== -1) {

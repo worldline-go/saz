@@ -9,6 +9,14 @@ VERSION := $(or $(IMAGE_TAG),$(shell git describe --tags --first-parent --match 
 
 .DEFAULT_GOAL := help
 
+.PHONY: build-front
+build-front: ## Build the front-end application
+	@echo "> Building front-end application"
+	cd _ui && pnpm install && pnpm run build
+	@echo "> Replacing build output"
+	rm -rf internal/server/dist 2> /dev/null
+	mv _ui/dist internal/server/dist
+
 .PHONY: build
 build: CGO_ENABLED ?= 0
 build: GOOS ?= linux
@@ -19,6 +27,10 @@ build: ## Build the binary
 .PHONY: build-releaser
 build-releaser: ## Build the binary with goreleaser
 	goreleaser build --snapshot --clean --single-target
+
+.PHONY: build-container
+build-container: build ## Build the container image with test tag
+	docker build -t $(PROJECT):test -f ci/Dockerfile dist/saz_linux_amd64_v1/
 
 .PHONY: run
 run: export LOG_LEVEL ?= debug

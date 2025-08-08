@@ -1,5 +1,5 @@
-BINARY    := saz
-MAIN_FILE := cmd/$(BINARY)/main.go
+PROJECT    := saz
+MAIN_FILE := cmd/$(PROJECT)/main.go
 
 LOCAL_BIN_DIR := $(PWD)/bin
 
@@ -22,14 +22,14 @@ build: CGO_ENABLED ?= 0
 build: GOOS ?= linux
 build: GOARCH ?= amd64
 build: ## Build the binary
-	go build -trimpath -ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(BUILD_COMMIT) -X main.date=$(BUILD_DATE)" -o bin/$(BINARY_NAME) $(BINARY_PATH)
+	go build -trimpath -ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(BUILD_COMMIT) -X main.date=$(BUILD_DATE)" -o bin/$(PROJECT) $(MAIN_FILE)
 
 .PHONY: build-releaser
 build-releaser: ## Build the binary with goreleaser
 	goreleaser build --snapshot --clean --single-target
 
 .PHONY: build-container
-build-container: build ## Build the container image with test tag
+build-container: build-releaser ## Build the container image with test tag
 	docker build -t $(PROJECT):test -f ci/Dockerfile dist/saz_linux_amd64_v1/
 
 .PHONY: run
@@ -47,13 +47,13 @@ test: ## Run unit tests
 
 .PHONY: env
 env: ## Create environment
-	@echo "> Creating environment $(BINARY)"
-	docker compose --project-name=$(BINARY) --file=env/docker-compose.yaml up -d
+	@echo "> Creating environment $(PROJECT)"
+	docker compose --project-name=$(PROJECT) --file=env/docker-compose.yaml up -d
 
 .PHONY: env-down
 env-down: ## Destroy environment
-	@echo "> Destroying environment $(BINARY)"
-	docker compose --project-name=$(BINARY) down --volumes
+	@echo "> Destroying environment $(PROJECT)"
+	docker compose --project-name=$(PROJECT) down --volumes
 
 .PHONY: help
 help: ## Display this help screen

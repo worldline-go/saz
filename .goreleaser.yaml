@@ -93,4 +93,3 @@ dockers:
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
-  - "--build-arg=DB_IMAGE=ghcr.io/rytsh/dock/db/multi:debian-12.10-slim"

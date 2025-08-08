@@ -1,4 +1,4 @@
-ARG DB_IMAGE
+ARG DB_IMAGE=ghcr.io/rytsh/dock/db/multi:debian-12.10-slim
 
 FROM ${DB_IMAGE}
 

@@ -88,6 +88,14 @@ func (d *Database) IterGet(ctx context.Context, name, query string) (iter.Seq2[m
 		return nil, fmt.Errorf("run query on database %s: %w", name, err)
 	}
 
+	// columns, err := rowsIter.Columns()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("get columns: %w", err)
+	// }
+
+	// rowsIter.ColumnTypes()
+	// dynamicFields := make([]reflect.StructField, 0, len(columns))
+
 	return func(yield func(map[string]any, error) bool) {
 		defer rowsIter.Close()
 
@@ -153,7 +161,7 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, r
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(columns, ","), strings.Join(placeholders, ","))
 
 		if _, err := tx.NamedExec(query, row); err != nil {
-			return nil, fmt.Errorf("insert row: %w", err)
+			return nil, fmt.Errorf("insert row: %w; query %s, row %v", err, query, row)
 		}
 
 		counter++

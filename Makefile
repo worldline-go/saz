@@ -29,13 +29,24 @@ build-releaser: ## Build the binary with goreleaser
 	goreleaser build --snapshot --clean --single-target
 
 .PHONY: build-container
-build-container: build-releaser ## Build the container image with test tag
+build-container: ## Build the container image with test tag
 	docker build -t $(PROJECT):test -f ci/Dockerfile dist/saz_linux_amd64_v1/
 
 .PHONY: run
 run: export LOG_LEVEL ?= debug
 run: ## Run the application
 	go run $(MAIN_FILE)
+
+.PHONY: build-in
+build-in: ## Build binary inside of the container
+	docker run -it --rm \
+		-v $(PWD):/workspace \
+		-v $(HOME)/.cache:/.cache \
+		-v $(HOME)/go/pkg/mod:/go/pkg/mod \
+		-w /workspace \
+		-u $(shell id -u):$(shell id -g) \
+		ghcr.io/rytsh/dock/build/go:1.24.6 \
+		make build-releaser
 
 .PHONY: lint
 lint: ## Lint Go files

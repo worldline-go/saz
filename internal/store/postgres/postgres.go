@@ -17,12 +17,14 @@ import (
 
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
+	"github.com/doug-martin/goqu/v9/exp"
 )
 
 type Postgres struct {
-	db     *sqlx.DB
-	goqu   *goqu.Database
-	prefix string
+	db   *sqlx.DB
+	goqu *goqu.Database
+
+	tableNotes exp.IdentifierExpression
 }
 
 func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
@@ -55,9 +57,9 @@ func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 	slog.Info("connected to store postgres")
 
 	return &Postgres{
-		db:     dbConn,
-		goqu:   dbGoqu,
-		prefix: cfg.TablePrefix,
+		db:         dbConn,
+		goqu:       dbGoqu,
+		tableNotes: goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "notes"),
 	}, nil
 }
 
@@ -77,7 +79,7 @@ func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
 	}
 
 	var note Note
-	isFound, err := s.goqu.From(s.prefix+"notes").Where(goqu.Ex{"id": id}).ScanStructContext(ctx, &note)
+	isFound, err := s.goqu.From(s.tableNotes).Where(goqu.Ex{"id": id}).ScanStructContext(ctx, &note)
 	if err != nil {
 		return nil, fmt.Errorf("get note by ID %s: %w", id, err)
 	}
@@ -106,7 +108,7 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 	}
 
 	// insert or update the note with goqu
-	_, err := s.goqu.Insert(s.prefix + "notes").Rows(dbNote).OnConflict(goqu.DoUpdate("id", dbNote)).Executor().ExecContext(ctx)
+	_, err := s.goqu.Insert(s.tableNotes).Rows(dbNote).OnConflict(goqu.DoUpdate("id", dbNote)).Executor().ExecContext(ctx)
 	if err != nil {
 		return fmt.Errorf("exec upsert note: %w", err)
 	}
@@ -116,7 +118,7 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 
 func (s *Postgres) GetNotes(ctx context.Context) ([]service.IDName, error) {
 	var notes []NoteIDName
-	if err := s.goqu.From(s.prefix+"notes").Select("id", "name").ScanStructsContext(ctx, &notes); err != nil {
+	if err := s.goqu.From(s.tableNotes).Select("id", "name").ScanStructsContext(ctx, &notes); err != nil {
 		return nil, fmt.Errorf("get notes: %w", err)
 	}
 

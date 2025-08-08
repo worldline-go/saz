@@ -39,7 +39,7 @@ run: ## Run the application
 
 .PHONY: lint
 lint: ## Lint Go files
-	@GOPATH="$(shell dirname $(PWD))" golangci-lint run ./...
+	golangci-lint run ./...
 
 .PHONY: test
 test: ## Run unit tests

@@ -9,6 +9,8 @@ import (
 	"github.com/worldline-go/saz/internal/config"
 	"golang.org/x/exp/slog"
 
+	_ "github.com/alexbrainman/odbc"
+	_ "github.com/godror/godror"
 	_ "github.com/mattn/go-sqlite3"
 	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/worldline-go/conn/database/postgres"

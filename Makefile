@@ -16,6 +16,10 @@ build: GOARCH ?= amd64
 build: ## Build the binary
 	go build -trimpath -ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(BUILD_COMMIT) -X main.date=$(BUILD_DATE)" -o bin/$(BINARY_NAME) $(BINARY_PATH)
 
+.PHONY: build-releaser
+build-releaser: ## Build the binary with goreleaser
+	goreleaser build --snapshot --clean --single-target
+
 .PHONY: run
 run: export LOG_LEVEL ?= debug
 run: ## Run the application

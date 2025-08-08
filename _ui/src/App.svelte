@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  type RouteComponent = typeof NotePage;
   import Router from "svelte-spa-router";
 
   import { storeNavbar } from "@/store/store";
@@ -17,9 +16,10 @@
   let layout: HTMLElement;
   let mounted = $state(false);
 
-  const routes = new Map<string | RegExp, RouteComponent>();
-  routes.set("/note/:id", NotePage);
-  routes.set("/", MainPage);
+  const routes = {
+    "/note/:id": NotePage,
+    "/": MainPage,
+  };
 
   onMount(async () => {
     await requestInfo();

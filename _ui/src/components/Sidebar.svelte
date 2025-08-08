@@ -8,7 +8,7 @@
 
 <div class="bg-gray-100 border-r border-black">
   <div class="sticky top-0 overflow-auto max-h-svh no-scrollbar">
-    <div class="border-b border-black h-7">
+    <div class="border-b border-black leading-8">
       <a
         href="#/"
         class="block h-full hover:bg-slate-700 hover:text-white"

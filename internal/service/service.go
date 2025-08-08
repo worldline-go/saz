@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+
+	"github.com/rakunlabs/logi"
 )
 
 type Service struct {
@@ -17,8 +19,17 @@ func New(db Database, store Storer) *Service {
 	}
 }
 
-func (s *Service) Run(ctx context.Context, name, query string, args ...any) (Result, error) {
-	return s.db.Run(ctx, name, query, args...)
+func (s *Service) Run(ctx context.Context, cell Cell) (Result, error) {
+	if cell.DBType == "" || cell.Content == "" {
+		return nil, fmt.Errorf("invalid cell; %w", ErrBadRequest)
+	}
+
+	logi.Ctx(ctx).Debug("running cell", "db_type", cell.DBType, "content", cell.Content, "result", cell.Result.V)
+	if cell.Result.V {
+		return s.db.Query(ctx, cell.DBType, cell.Content)
+	}
+
+	return s.db.Exec(ctx, cell.DBType, cell.Content)
 }
 
 func (s *Service) DatabaseList() []string {
@@ -33,8 +44,8 @@ func (s *Service) SaveNote(ctx context.Context, note *Note) error {
 	if note == nil {
 		return fmt.Errorf("note is nil; %w", ErrBadRequest)
 	}
-	if note.ID == "" || note.Name == "" {
-		return fmt.Errorf("invalid Name and ID; %w", ErrBadRequest)
+	if note.ID == "" || note.Name == "" || note.Path == "" {
+		return fmt.Errorf("invalid Name, ID, or Path; %w", ErrBadRequest)
 	}
 
 	return s.store.Save(ctx, note)

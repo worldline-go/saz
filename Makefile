@@ -17,6 +17,7 @@ build: ## Build the binary
 	go build -trimpath -ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(BUILD_COMMIT) -X main.date=$(BUILD_DATE)" -o bin/$(BINARY_NAME) $(BINARY_PATH)
 
 .PHONY: run
+run: export LOG_LEVEL ?= debug
 run: ## Run the application
 	go run $(MAIN_FILE)
 

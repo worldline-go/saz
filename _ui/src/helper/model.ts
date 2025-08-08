@@ -2,13 +2,24 @@ export type cell = {
   id: string;
   db_type: string;
   content: string;
+  mode?: modeTransfer;
+  enabled?: boolean;
+  result?: boolean;
   description?: string; // Optional field for description
   collapsed?: boolean;
 };
 
+export type modeTransfer = {
+  enabled: boolean;
+  name: "transfer";
+  db_type: string;
+  table: string;
+}
+
 export type notebook = {
   id: string;
   name: string;
+  path: string;
   content: content;
 };
 

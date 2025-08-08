@@ -16,6 +16,7 @@ var (
 type Note struct {
 	ID      string  `json:"id"`
 	Name    string  `json:"name"`
+	Path    string  `json:"path"`
 	Content Content `json:"content"`
 }
 
@@ -32,8 +33,18 @@ type Cell struct {
 	ID          string             `json:"id"`
 	DBType      string             `json:"db_type"`
 	Content     string             `json:"content"`
+	Mode        types.Null[Mode]   `json:"mode,omitzero"`
 	Description types.Null[string] `json:"description,omitzero"`
 	Collapsed   types.Null[bool]   `json:"collapsed,omitzero"`
+	Enabled     types.Null[bool]   `json:"enabled,omitzero"`
+	Result      types.Null[bool]   `json:"result,omitzero"`
+}
+
+type Mode struct {
+	Enabled bool   `json:"enabled"`
+	Name    string `json:"name"`
+	DBType  string `json:"db_type"`
+	Table   string `json:"table"`
 }
 
 type Storer interface {
@@ -54,5 +65,6 @@ type Result interface {
 type Database interface {
 	DatabaseList() []string
 
-	Run(ctx context.Context, name, query string, args ...any) (Result, error)
+	Query(ctx context.Context, name, query string) (Result, error)
+	Exec(ctx context.Context, name, query string) (Result, error)
 }

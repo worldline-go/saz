@@ -1,6 +1,6 @@
 import { storeInfo, storeNoteIds } from "@/store/store";
 import axios from "axios";
-import type { info, notebook, idName } from "./model";
+import type { info, notebook, idName, cell } from "./model";
 import { addToast } from "@/store/toast";
 
 // type RequestResponse = {
@@ -9,13 +9,7 @@ import { addToast } from "@/store/toast";
 //   error?: string;
 // }
 
-type RunRequest = {
-  name: string;
-  query: string;
-  args?: Record<string, any>;
-}
-
-export const requestRun = (data: RunRequest) => {
+export const requestRun = (data: cell) => {
   return axios.post("/api/v1/run", data);
 };
 

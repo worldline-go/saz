@@ -76,6 +76,7 @@ func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
 	return &service.Note{
 		ID:      note.ID,
 		Name:    note.Name,
+		Path:    note.Path,
 		Content: note.Content.V,
 	}, nil
 }
@@ -85,6 +86,7 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 		ID:        note.ID,
 		Name:      note.Name,
 		Content:   types.NewJSON(note.Content),
+		Path:      note.Path,
 		UpdatedBy: types.NewNull(service.UserContext(ctx)),
 		UpdatedAt: types.NewTimeNull(time.Now()),
 		CreatedAt: types.NewTimeNull(time.Now()),
@@ -100,7 +102,7 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 }
 
 func (s *Postgres) GetNotes(ctx context.Context) ([]service.IDName, error) {
-	var notes []Note
+	var notes []NoteIDName
 	if err := s.goqu.From("notes").Select("id", "name").ScanStructsContext(ctx, &notes); err != nil {
 		return nil, fmt.Errorf("get notes: %w", err)
 	}

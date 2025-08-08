@@ -23,8 +23,6 @@
         {/each}
       </tbody>
     </table>
-  {:else}
-    <p>No data available</p>
   {/if}
 </div>
 

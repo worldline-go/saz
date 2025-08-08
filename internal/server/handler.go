@@ -10,15 +10,10 @@ import (
 	"github.com/worldline-go/saz/internal/service"
 )
 
-type RunRequest struct {
-	Name  string `json:"name"`
-	Query string `json:"query"`
-	Args  []any  `json:"args,omitempty"`
-}
-
 func (s *Server) run(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var req RunRequest
+	ctx := Context(r)
+
+	var req service.Cell
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ada.JSON(w, http.StatusBadRequest, Response{
 			Message: "Invalid request format",
@@ -28,7 +23,7 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.service.Run(ctx, req.Name, req.Query, req.Args...)
+	result, err := s.service.Run(ctx, req)
 	if err != nil {
 		if errors.Is(err, service.ErrNotExists) {
 			ada.JSON(w, http.StatusNotFound, Response{
@@ -76,7 +71,7 @@ func (s *Server) putNote(w http.ResponseWriter, r *http.Request) {
 
 	note.ID = r.PathValue("id")
 
-	if err := s.service.SaveNote(UserContext(r), &note); err != nil {
+	if err := s.service.SaveNote(Context(r), &note); err != nil {
 		if errors.Is(err, service.ErrBadRequest) {
 			ada.JSON(w, http.StatusBadRequest, Response{
 				Message: "Invalid note data",

@@ -17,7 +17,25 @@ func (d *Database) DatabaseList() []string {
 	return dbList
 }
 
-func (d *Database) Run(ctx context.Context, name, query string, args ...any) (service.Result, error) {
+func (d *Database) Exec(ctx context.Context, name, query string) (service.Result, error) {
+	dbConn, ok := d.DB[name]
+	if !ok {
+		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
+	}
+
+	start := time.Now()
+	result, err := dbConn.ExecContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("execute query on database %s: %w", name, err)
+	}
+
+	return &Result{
+		sqlResult: result,
+		duration:  time.Since(start),
+	}, nil
+}
+
+func (d *Database) Query(ctx context.Context, name, query string) (service.Result, error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
 		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
@@ -25,7 +43,7 @@ func (d *Database) Run(ctx context.Context, name, query string, args ...any) (se
 
 	start := time.Now()
 	rows := []map[string]any{}
-	rowsIter, err := dbConn.QueryxContext(ctx, query, args...)
+	rowsIter, err := dbConn.QueryxContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("run query on database %s: %w", name, err)
 	}

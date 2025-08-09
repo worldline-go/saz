@@ -120,6 +120,7 @@ func (d *Database) IterGet(ctx context.Context, name, query string, mapType serv
 			record := reflect.New(dynamicType).Interface()
 			if err := rowsIter.StructScan(record); err != nil {
 				_ = !yield(nil, fmt.Errorf("scan row: %w", err))
+				return
 			}
 
 			if !yield(Struct2Map(record), nil) {

@@ -37,7 +37,7 @@ func (s *Service) Run(ctx context.Context, cell Cell) (Result, error) {
 			if cell.Mode.V.Table == "" {
 				return nil, fmt.Errorf("transfer mode requires a table name; %w", ErrBadRequest)
 			}
-			iterGet, err := s.db.IterGet(ctx, cell.DBType, cell.Content)
+			iterGet, err := s.db.IterGet(ctx, cell.DBType, cell.Content, cell.Mode.V.MapType)
 			if err != nil {
 				return nil, fmt.Errorf("get iterator: %w", err)
 			}

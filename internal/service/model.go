@@ -43,11 +43,22 @@ type Cell struct {
 }
 
 type Mode struct {
-	Enabled bool   `json:"enabled"`
-	Name    string `json:"name"`
-	DBType  string `json:"db_type"`
-	Table   string `json:"table"`
-	Wipe    bool   `json:"wipe"`
+	Enabled bool    `json:"enabled"`
+	Name    string  `json:"name"`
+	DBType  string  `json:"db_type"`
+	Table   string  `json:"table"`
+	Wipe    bool    `json:"wipe"`
+	MapType MapType `json:"map_type"`
+}
+
+type MapType struct {
+	Enabled bool                  `json:"enabled"`
+	Column  map[string]ColumnType `json:"column"`
+}
+
+type ColumnType struct {
+	Type     string `json:"type"`
+	Nullable bool   `json:"nullable"`
 }
 
 type Storer interface {
@@ -71,6 +82,6 @@ type Database interface {
 	Query(ctx context.Context, name, query string, limit int64) (Result, error)
 	Exec(ctx context.Context, name, query string) (Result, error)
 
-	IterGet(ctx context.Context, name, query string) (iter.Seq2[map[string]any, error], error)
+	IterGet(ctx context.Context, name, query string, mapType MapType) (iter.Seq2[map[string]any, error], error)
 	IterSet(ctx context.Context, name, table string, wipe bool, rows iter.Seq2[map[string]any, error]) (Result, error)
 }

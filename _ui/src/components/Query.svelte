@@ -18,6 +18,10 @@
     Route,
     RouteOff,
     ShieldPlus,
+    MapPlus,
+    SquareDashed,
+    Plus,
+    Vote,
   } from "@lucide/svelte";
   import type { cell as cellType } from "@/helper/model";
 
@@ -49,6 +53,10 @@
           db_type: cell.db_type,
           table: "",
           wipe: false,
+          map_type: {
+            enabled: false,
+            column: {},
+          },
         };
         break;
       default:
@@ -69,7 +77,7 @@
     <div class="flex justify-between border-b border-gray-300">
       <div class="flex items-center w-full">
         <select
-          class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white px-2 py-1 w-28 h-7"
+          class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white pl-2 pr-0 w-28 h-7"
           bind:value={cell.db_type}
         >
           {#each $storeInfo?.databases ?? [] as database}
@@ -126,15 +134,95 @@
         <Editor bind:value={cell.content} collapse={cell.collapsed} />
       </div>
       {#if cell.mode?.name === "transfer"}
-        <div class="flex flex-col items-start border-l border-gray-300">
+        {#if cell.mode?.map_type.enabled}
+          <div class="flex flex-col items-start border-l border-gray-300">
+            <span
+              class={"w-full min-w-48 border-b border-gray-300 flex items-center justify-between leading-[normal]"}
+            >
+              <span class="px-2">Column Mapping</span>
+              <button
+                class="hover:bg-yellow-200 hover:cursor-pointer"
+                title="Add new column"
+                onclick={() => {
+                  if (cell?.mode) {
+                    if (!cell.mode.map_type.column) {
+                      cell.mode.map_type.column = {};
+                    }
+
+                    cell.mode.map_type.column[""] = {
+                      type: "string",
+                      nullable: false,
+                    };
+                  }
+                }}
+              >
+                <Plus class="px-1" />
+              </button>
+            </span>
+            {#each Object.entries(cell.mode.map_type.column) as [columnName, column]}
+              <div class="flex items-center border-b border-gray-300">
+                <input
+                  class="px-2 hover:bg-white h-full"
+                  value={columnName}
+                  placeholder="Untitled"
+                  onchange={(e) => {
+                    const newName = e.currentTarget.value.trim();
+                    if (cell.mode?.map_type.column && newName) {
+                      cell.mode.map_type.column[newName] =
+                        cell.mode.map_type.column[columnName];
+                      delete cell.mode.map_type.column[columnName];
+                    }
+                  }}
+                />
+                <select
+                  class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                  bind:value={column.type}
+                >
+                  <option value="string">String</option>
+                  <option value="number">Number</option>
+                </select>
+                <label class="swap hover:bg-yellow-200 h-full">
+                  <input type="checkbox" bind:checked={column.nullable} />
+                  <div class="swap-on" title="Not Null">
+                    <SquareDashed class="px-1" />
+                  </div>
+                  <div class="swap-off" title="Null">
+                    <Vote class="px-1" />
+                  </div>
+                </label>
+                <button
+                  class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
+                  onclick={() => {
+                    delete cell.mode?.map_type.column[columnName];
+                  }}
+                >
+                  <Trash class="px-1" />
+                </button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+        <div class="flex flex-col items-center border-l border-gray-300">
           <span
             class={[
-              "w-48 border-b border-gray-300 flex items-center justify-between",
+              "w-48 border-b border-gray-300 flex items-center justify-between leading-[normal]",
               cell.mode.enabled ? "bg-green-100" : "bg-red-100",
             ]}
           >
             <span class="px-2">Transfer Mode</span>
             <div>
+              <label class="swap hover:bg-yellow-200">
+                <input
+                  type="checkbox"
+                  bind:checked={cell.mode.map_type.enabled}
+                />
+                <div class="swap-on" title="Disable column mapping">
+                  <MapPlus class="px-1" />
+                </div>
+                <div class="swap-off" title="Column Mapping">
+                  <SquareDashed class="px-1" />
+                </div>
+              </label>
               <label class="swap hover:bg-yellow-200">
                 <input type="checkbox" bind:checked={cell.mode.wipe} />
                 <div class="swap-on" title="Append to existing data">
@@ -156,7 +244,7 @@
             </div>
           </span>
           <select
-            class="select border-none rounded-none hover:cursor-pointer hover:bg-white px-2 h-7"
+            class="select border-none rounded-none hover:cursor-pointer hover:bg-white pl-2 pr-0 h-7"
             bind:value={cell.mode.db_type}
           >
             {#each $storeInfo?.databases ?? [] as database}

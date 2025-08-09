@@ -95,7 +95,7 @@ func (d *Database) Query(ctx context.Context, name, query string, limit int64) (
 
 // /////////////////////////////////////////////
 
-func (d *Database) IterGet(ctx context.Context, name, query string) (iter.Seq2[map[string]any, error], error) {
+func (d *Database) IterGet(ctx context.Context, name, query string, mapType service.MapType) (iter.Seq2[map[string]any, error], error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
 		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
@@ -111,7 +111,7 @@ func (d *Database) IterGet(ctx context.Context, name, query string) (iter.Seq2[m
 		return nil, fmt.Errorf("get column types: %w", err)
 	}
 
-	dynamicType := reflect.StructOf(GenerateStruct(columnTypes))
+	dynamicType := reflect.StructOf(GenerateStruct(columnTypes, mapType))
 
 	return func(yield func(map[string]any, error) bool) {
 		defer rowsIter.Close()

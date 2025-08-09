@@ -16,6 +16,15 @@ export type modeTransfer = {
   db_type: string;
   table: string;
   wipe: boolean;
+  map_type: map_type;
+}
+
+export type map_type = {
+  enabled: boolean;
+  column: Record<string, {
+    type: "number" | "string";
+    nullable: boolean;
+  }>;
 }
 
 export type notebook = {

@@ -5,15 +5,16 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/worldline-go/saz/internal/service"
 	"github.com/worldline-go/types"
 )
 
-func GenerateStruct(columnTypes []*sql.ColumnType) []reflect.StructField {
+func GenerateStruct(columnTypes []*sql.ColumnType, mapType service.MapType) []reflect.StructField {
 	dynamicFields := make([]reflect.StructField, 0, len(columnTypes))
 	for _, col := range columnTypes {
 		field := reflect.StructField{
 			Name: strings.ToTitle(col.Name()),
-			Type: GetStructType(col),
+			Type: GetStructType(col, mapType),
 			Tag:  reflect.StructTag(`db:"` + col.Name() + `"`),
 		}
 
@@ -23,7 +24,24 @@ func GenerateStruct(columnTypes []*sql.ColumnType) []reflect.StructField {
 	return dynamicFields
 }
 
-func GetStructType(col *sql.ColumnType) reflect.Type {
+func GetStructType(col *sql.ColumnType, mapType service.MapType) reflect.Type {
+	if mapType.Enabled {
+		if colMapType, ok := mapType.Column[col.Name()]; ok {
+			switch colMapType.Type {
+			case "string":
+				if colMapType.Nullable {
+					return reflect.TypeOf(types.Null[string]{})
+				}
+				return reflect.TypeOf("")
+			case "number":
+				if colMapType.Nullable {
+					return reflect.TypeOf(types.NullDecimal{})
+				}
+				return reflect.TypeOf(types.Decimal{})
+			}
+		}
+	}
+
 	switch col.ScanType().Kind() {
 	case reflect.Float64, reflect.Int64, reflect.Uint64,
 		reflect.Float32, reflect.Int32, reflect.Uint32,

@@ -1,5 +1,5 @@
-server:
-  base_path: "/saz"
+# server:
+#   base_path: "/saz"
 
 database:
   postgres:

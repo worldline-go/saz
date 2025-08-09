@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"reflect"
 	"strings"
 	"time"
 
+	"github.com/spf13/cast"
 	"github.com/worldline-go/saz/internal/service"
 )
 
@@ -32,20 +34,25 @@ func (d *Database) Exec(ctx context.Context, name, query string) (service.Result
 	}
 
 	rowsAffected, _ := result.RowsAffected()
+
 	return &Result{
+		columns: []string{"status"},
+		rows: [][]any{
+			{"success"},
+		},
 		rowsAffected: rowsAffected,
 		duration:     time.Since(start),
 	}, nil
 }
 
-func (d *Database) Query(ctx context.Context, name, query string) (service.Result, error) {
+func (d *Database) Query(ctx context.Context, name, query string, limit int64) (service.Result, error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
 		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
 	}
 
 	start := time.Now()
-	rows := []map[string]any{}
+	rows := [][]any{}
 	rowsIter, err := dbConn.QueryxContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("run query on database %s: %w", name, err)
@@ -58,11 +65,22 @@ func (d *Database) Query(ctx context.Context, name, query string) (service.Resul
 	}
 
 	for rowsIter.Next() {
-		row := make(map[string]any)
-		if err := rowsIter.MapScan(row); err != nil {
+		values, err := rowsIter.SliceScan()
+		if err != nil {
 			return nil, fmt.Errorf("scan row: %w", err)
 		}
-		rows = append(rows, row)
+
+		valuesStr := make([]any, 0, len(values))
+		for _, v := range values {
+			valuesStr = append(valuesStr, cast.ToString(v))
+		}
+
+		rows = append(rows, valuesStr)
+
+		limit--
+		if limit == 0 {
+			break
+		}
 	}
 	if err := rowsIter.Err(); err != nil {
 		return nil, fmt.Errorf("iterate rows: %w", err)
@@ -88,24 +106,23 @@ func (d *Database) IterGet(ctx context.Context, name, query string) (iter.Seq2[m
 		return nil, fmt.Errorf("run query on database %s: %w", name, err)
 	}
 
-	// columns, err := rowsIter.Columns()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("get columns: %w", err)
-	// }
+	columnTypes, err := rowsIter.ColumnTypes()
+	if err != nil {
+		return nil, fmt.Errorf("get column types: %w", err)
+	}
 
-	// rowsIter.ColumnTypes()
-	// dynamicFields := make([]reflect.StructField, 0, len(columns))
+	dynamicType := reflect.StructOf(GenerateStruct(columnTypes))
 
 	return func(yield func(map[string]any, error) bool) {
 		defer rowsIter.Close()
 
 		for rowsIter.Next() {
-			row := make(map[string]any)
-			if err := rowsIter.MapScan(row); err != nil {
+			record := reflect.New(dynamicType).Interface()
+			if err := rowsIter.StructScan(record); err != nil {
 				_ = !yield(nil, fmt.Errorf("scan row: %w", err))
 			}
 
-			if !yield(row, nil) {
+			if !yield(Struct2Map(record), nil) {
 				return
 			}
 		}
@@ -172,8 +189,10 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, r
 	}
 
 	return &Result{
-		columns:      []string{"status"},
-		rows:         []map[string]any{{"status": "success"}},
+		columns: []string{"status"},
+		rows: [][]any{
+			{"success"},
+		},
 		duration:     time.Since(start),
 		rowsAffected: counter,
 	}, nil

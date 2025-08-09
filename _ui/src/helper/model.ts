@@ -2,6 +2,7 @@ export type cell = {
   id: string;
   db_type: string;
   content: string;
+  limit: number;
   mode?: modeTransfer;
   enabled?: boolean;
   result?: boolean;

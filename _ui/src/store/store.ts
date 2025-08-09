@@ -10,7 +10,7 @@ let noteIds: idName[] = [];
 
 export type QueryOutput = {
   rows_affected?: number;
-  data: Record<string, any>[];
+  rows: string[][];
   columns: string[];
   duration?: string;
 }

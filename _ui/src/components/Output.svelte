@@ -2,6 +2,21 @@
   import { ArrowLeft, ArrowRight, X } from "@lucide/svelte";
   import Rows from "./Rows.svelte";
   import { storeOutput } from "@/store/store";
+
+  let offset = $state(0);
+  let limit = $state(10);
+
+  const nextPage = () => {
+    if ($storeOutput) {
+      if (+limit + offset < $storeOutput?.rows.length) {
+        offset = Math.min(+limit + offset, $storeOutput?.rows.length ?? 0);
+      }
+    }
+  };
+
+  const prevPage = () => {
+    offset = Math.max(-limit + offset, 0);
+  };
 </script>
 
 <div>
@@ -18,10 +33,26 @@
           Duration: {$storeOutput.duration}
         </span>
       {/if}
-      <button class=" text-gray-500 hover:bg-gray-200 hover:cursor-pointer">
+      {#if $storeOutput}
+        <span class="text-xs text-gray-600 px-2">
+          Offset: {offset}, Limit:
+          <input
+            type="text"
+            size={`${limit}`.length || 1}
+            bind:value={limit}
+          />, Total: {$storeOutput?.rows.length ?? 0}
+        </span>
+      {/if}
+      <button
+        class=" text-gray-500 hover:bg-yellow-200 hover:cursor-pointer"
+        onclick={prevPage}
+      >
         <ArrowLeft />
       </button>
-      <button class=" text-gray-500 hover:bg-gray-200 hover:cursor-pointer">
+      <button
+        class=" text-gray-500 hover:bg-yellow-200 hover:cursor-pointer"
+        onclick={nextPage}
+      >
         <ArrowRight />
       </button>
       <button
@@ -34,5 +65,5 @@
       </button>
     </div>
   </div>
-  <Rows output={$storeOutput} />
+  <Rows output={$storeOutput} {offset} {limit} />
 </div>

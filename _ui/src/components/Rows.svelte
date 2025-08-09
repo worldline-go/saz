@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { QueryOutput } from "@/store/store";
-  let { output = $bindable() }: { output: QueryOutput | null } = $props();
+  let {
+    output = $bindable(),
+    limit = $bindable(),
+    offset = $bindable(),
+  }: { output: QueryOutput | null; limit: number; offset: number } = $props();
 </script>
 
 <div>
@@ -8,16 +12,18 @@
     <table>
       <thead>
         <tr>
+          <th></th>
           {#each output.columns as column}
             <th>{column}</th>
           {/each}
         </tr>
       </thead>
       <tbody>
-        {#each output.data as row}
+        {#each output?.rows?.slice(offset, +limit + offset) as row, index}
           <tr>
-            {#each output.columns as column}
-              <td title={row[column]}>{row[column]}</td>
+            <td>{index + offset + 1}</td>
+            {#each row as value}
+              <td title={value}>{value}</td>
             {/each}
           </tr>
         {/each}
@@ -41,6 +47,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  td:hover {
+    overflow-x: auto;
+    scrollbar-width: none;
+    text-overflow: unset;
+    -ms-overflow-style: none;
+  }
+  td:hover::-webkit-scrollbar {
+    display: none;
   }
   th {
     background-color: #f2f2f2;

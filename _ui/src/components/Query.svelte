@@ -85,8 +85,19 @@
         />
       </div>
       <div class="flex items-center gap-1">
+        <input
+          class={[
+            "h-full border-none rounded-none bg-gray-100 hover:cursor-text px-2 w-20",
+            cell.result ? "hover:bg-white focus:bg-white" : "line-through",
+          ]}
+          disabled={!cell.result}
+          type="number"
+          placeholder="Limit"
+          title="Total Limit"
+          bind:value={cell.limit}
+        />
         <label
-          class="swap hover:bg-yellow-300 hover:cursor-pointer px-2 h-full"
+          class="swap hover:bg-yellow-200 hover:cursor-pointer px-2 h-full"
           title="Show Output Result"
         >
           <input type="checkbox" bind:checked={cell.result} />
@@ -94,7 +105,7 @@
           <div class="swap-off"><CaptionsOff /></div>
         </label>
         <label
-          class="swap hover:bg-yellow-300 hover:cursor-pointer px-2 h-full"
+          class="swap hover:bg-yellow-200 hover:cursor-pointer px-2 h-full"
           title="Enable/Disable Query on the notebook execution"
         >
           <input type="checkbox" bind:checked={cell.enabled} />
@@ -124,7 +135,7 @@
           >
             <span class="px-2">Transfer Mode</span>
             <div>
-              <label class="swap hover:bg-yellow-300">
+              <label class="swap hover:bg-yellow-200">
                 <input type="checkbox" bind:checked={cell.mode.wipe} />
                 <div class="swap-on" title="Append to existing data">
                   <BrushCleaning class="px-1" />
@@ -133,7 +144,7 @@
                   <ShieldPlus class="px-1" />
                 </div>
               </label>
-              <label class="swap hover:bg-yellow-300">
+              <label class="swap hover:bg-yellow-200">
                 <input type="checkbox" bind:checked={cell.mode.enabled} />
                 <div class="swap-on" title="Disable Mode">
                   <Route class="px-1" />

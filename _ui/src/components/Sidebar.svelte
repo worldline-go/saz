@@ -11,7 +11,7 @@
     <div class="border-b border-black leading-8">
       <a
         href="#/"
-        class="block h-full hover:bg-slate-700 hover:text-white"
+        class="block h-full hover:bg-yellow-200 hover:text-black"
         use:active={{
           path: `/`,
           className: "bg-black text-white",
@@ -41,7 +41,7 @@
       <div class="border-b border-black h-7">
         <a
           href="#/note/{note.id}"
-          class="block h-full hover:bg-slate-700 hover:text-white"
+          class="block h-full hover:bg-yellow-200 hover:text-black"
           use:active={{
             path: `/note/${note.id}`,
             className: "bg-black text-white",

@@ -61,7 +61,7 @@ func (s *Service) Run(ctx context.Context, cell Cell) (Result, error) {
 	}
 
 	if cell.Result.V {
-		return s.db.Query(ctx, cell.DBType, cell.Content)
+		return s.db.Query(ctx, cell.DBType, cell.Content, cell.Limit)
 	}
 
 	return s.db.Exec(ctx, cell.DBType, cell.Content)

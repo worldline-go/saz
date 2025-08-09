@@ -34,6 +34,7 @@ type Cell struct {
 	ID          string             `json:"id"`
 	DBType      string             `json:"db_type"`
 	Content     string             `json:"content"`
+	Limit       int64              `json:"limit"`
 	Mode        types.Null[Mode]   `json:"mode,omitzero"`
 	Description types.Null[string] `json:"description,omitzero"`
 	Collapsed   types.Null[bool]   `json:"collapsed,omitzero"`
@@ -59,7 +60,7 @@ type Storer interface {
 
 type Result interface {
 	Columns() []string
-	Rows() []map[string]any
+	Rows() [][]any
 	RowsAffected() int64
 	Duration() time.Duration
 }
@@ -67,7 +68,7 @@ type Result interface {
 type Database interface {
 	DatabaseList() []string
 
-	Query(ctx context.Context, name, query string) (Result, error)
+	Query(ctx context.Context, name, query string, limit int64) (Result, error)
 	Exec(ctx context.Context, name, query string) (Result, error)
 
 	IterGet(ctx context.Context, name, query string) (iter.Seq2[map[string]any, error], error)

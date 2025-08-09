@@ -42,10 +42,10 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ada.JSON(w, http.StatusOK, Response{
+	ada.JSON(w, http.StatusOK, ResponseQuery{
 		RowsAffected: result.RowsAffected(),
 		Columns:      result.Columns(),
-		Data:         result.Rows(),
+		Rows:         result.Rows(),
 		Duration:     result.Duration().Truncate(time.Microsecond).String(),
 	})
 }

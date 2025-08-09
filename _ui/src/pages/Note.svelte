@@ -26,6 +26,7 @@
     const newCell: cell = {
       id: ulid(),
       db_type: $storeInfo?.databases?.[0] || "",
+      limit: 100,
       content: "",
       description: "",
       collapsed: false,
@@ -50,6 +51,7 @@
         id: cell.id,
         db_type: cell.db_type,
         content: cell.content,
+        limit: cell.limit,
         mode: cell.mode,
         description: cell.description,
         collapsed: cell.collapsed,

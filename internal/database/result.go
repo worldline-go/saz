@@ -8,7 +8,7 @@ type Result struct {
 	columns      []string
 	duration     time.Duration
 	rowsAffected int64 // This can be set if using sql.Result
-	rows         []map[string]any
+	rows         [][]any
 }
 
 func (r *Result) RowsAffected() int64 {
@@ -19,7 +19,7 @@ func (r *Result) Duration() time.Duration {
 	return r.duration
 }
 
-func (r *Result) Rows() []map[string]any {
+func (r *Result) Rows() [][]any {
 	return r.rows
 }
 

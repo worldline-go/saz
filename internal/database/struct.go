@@ -6,6 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/shopspring/decimal"
+	"github.com/spf13/cast"
 	"github.com/worldline-go/saz/internal/service"
 	"github.com/worldline-go/types"
 )
@@ -67,7 +69,7 @@ func GetStructType(col *sql.ColumnType, mapType service.MapType) reflect.Type {
 	return col.ScanType()
 }
 
-func Struct2Map(v any) map[string]any {
+func Struct2Map(v any, mapType service.MapType) map[string]any {
 	val := reflect.ValueOf(v)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -100,13 +102,78 @@ func Struct2Map(v any) map[string]any {
 		}
 	}
 
-	return result
+	return mapDestination(result, mapType)
+}
+
+func mapDestination(result map[string]any, mapType service.MapType) map[string]any {
+	if !mapType.Enabled {
+		return result
+	}
+
+	mappedResult := make(map[string]any, len(result))
+	for k, v := range result {
+		if colType, ok := mapType.Destination[k]; ok {
+			switch colType.Type {
+			case "string":
+				vStr := getAnyString(v)
+				if colType.Nullable {
+					mappedResult[k] = vStr
+				} else {
+					mappedResult[k] = vStr.V
+				}
+			case "number":
+				vNum := getAnyNumber(v)
+				if colType.Nullable {
+					mappedResult[k] = vNum
+				} else {
+					mappedResult[k] = vNum.Decimal
+				}
+			default:
+				mappedResult[k] = v
+			}
+		} else {
+			mappedResult[k] = v
+		}
+	}
+
+	return mappedResult
+}
+
+func getAnyString(v any) types.Null[string] {
+	if v == nil {
+		return types.NewNullWithValid("", false)
+	}
+
+	switch val := v.(type) {
+	case string:
+		return types.NewNull(val)
+	case types.Null[string]:
+		return val
+	default:
+		return types.NewNull(cast.ToString(v))
+	}
+}
+
+func getAnyNumber(v any) types.NullDecimal {
+	if v == nil {
+		return types.NullDecimal{Valid: false}
+	}
+
+	switch val := v.(type) {
+	case types.Decimal:
+		return types.NullDecimal{Decimal: val, Valid: true}
+	case types.NullDecimal:
+		return val
+	default:
+		return types.NullDecimal{Decimal: decimal.RequireFromString(cast.ToString(v)), Valid: true}
+	}
 }
 
 func sanitizeString(s string) string {
 	if utf8.ValidString(s) {
 		return s
 	}
+
 	var b strings.Builder
 	for i, r := range s {
 		if r == utf8.RuneError {
@@ -118,5 +185,6 @@ func sanitizeString(s string) string {
 		}
 		b.WriteRune(r)
 	}
+
 	return b.String()
 }

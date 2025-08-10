@@ -21,7 +21,11 @@ export type modeTransfer = {
 
 export type map_type = {
   enabled: boolean;
-  column: Record<string, {
+  column?: Record<string, {
+    type: "number" | "string";
+    nullable: boolean;
+  }>;
+  destination?: Record<string, {
     type: "number" | "string";
     nullable: boolean;
   }>;

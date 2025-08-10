@@ -56,6 +56,7 @@
           map_type: {
             enabled: false,
             column: {},
+            destination: {},
           },
         };
         break;
@@ -137,9 +138,9 @@
         {#if cell.mode?.map_type.enabled}
           <div class="flex flex-col items-start border-l border-gray-300">
             <span
-              class={"w-full min-w-48 border-b border-gray-300 flex items-center justify-between leading-[normal]"}
+              class={"w-full min-w-56 border-b border-gray-300 flex items-center justify-between leading-[normal]"}
             >
-              <span class="px-2">Column Mapping</span>
+              <span class="px-2">Source</span>
               <button
                 class="hover:bg-yellow-200 hover:cursor-pointer"
                 title="Add new column"
@@ -159,47 +160,115 @@
                 <Plus class="px-1" />
               </button>
             </span>
-            {#each Object.entries(cell.mode.map_type.column) as [columnName, column]}
-              <div class="flex items-center border-b border-gray-300">
-                <input
-                  class="px-2 hover:bg-white h-full"
-                  value={columnName}
-                  placeholder="Untitled"
-                  onchange={(e) => {
-                    const newName = e.currentTarget.value.trim();
-                    if (cell.mode?.map_type.column && newName) {
-                      cell.mode.map_type.column[newName] =
-                        cell.mode.map_type.column[columnName];
-                      delete cell.mode.map_type.column[columnName];
+            {#if cell.mode?.map_type.column}
+              {#each Object.entries(cell.mode.map_type.column) as [columnName, column]}
+                <div class="flex items-center border-b border-gray-300">
+                  <input
+                    class="px-2 hover:bg-white h-full"
+                    value={columnName}
+                    placeholder="Untitled"
+                    onchange={(e) => {
+                      const newName = e.currentTarget.value.trim();
+                      if (cell.mode?.map_type.column && newName) {
+                        cell.mode.map_type.column[newName] =
+                          cell.mode.map_type.column[columnName];
+                        delete cell.mode.map_type.column[columnName];
+                      }
+                    }}
+                  />
+                  <select
+                    class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                    bind:value={column.type}
+                  >
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
+                  </select>
+                  <label class="swap hover:bg-yellow-200 h-full">
+                    <input type="checkbox" bind:checked={column.nullable} />
+                    <div class="swap-on" title="Not Null">
+                      <SquareDashed class="px-1" />
+                    </div>
+                    <div class="swap-off" title="Null">
+                      <Vote class="px-1" />
+                    </div>
+                  </label>
+                  <button
+                    class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
+                    onclick={() => {
+                      delete cell.mode?.map_type.column![columnName];
+                    }}
+                  >
+                    <Trash class="px-1" />
+                  </button>
+                </div>
+              {/each}
+            {/if}
+            <span
+              class={"w-full min-w-56 border-b border-gray-300 flex items-center justify-between leading-[normal]"}
+            >
+              <span class="px-2">Destination</span>
+              <button
+                class="hover:bg-yellow-200 hover:cursor-pointer"
+                title="Add new column"
+                onclick={() => {
+                  if (cell?.mode) {
+                    if (!cell.mode.map_type.destination) {
+                      cell.mode.map_type.destination = {};
                     }
-                  }}
-                />
-                <select
-                  class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
-                  bind:value={column.type}
-                >
-                  <option value="string">String</option>
-                  <option value="number">Number</option>
-                </select>
-                <label class="swap hover:bg-yellow-200 h-full">
-                  <input type="checkbox" bind:checked={column.nullable} />
-                  <div class="swap-on" title="Not Null">
-                    <SquareDashed class="px-1" />
-                  </div>
-                  <div class="swap-off" title="Null">
-                    <Vote class="px-1" />
-                  </div>
-                </label>
-                <button
-                  class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
-                  onclick={() => {
-                    delete cell.mode?.map_type.column[columnName];
-                  }}
-                >
-                  <Trash class="px-1" />
-                </button>
-              </div>
-            {/each}
+
+                    cell.mode.map_type.destination[""] = {
+                      type: "string",
+                      nullable: false,
+                    };
+                  }
+                }}
+              >
+                <Plus class="px-1" />
+              </button>
+            </span>
+            {#if cell.mode?.map_type.destination}
+              {#each Object.entries(cell.mode.map_type.destination) as [columnName, column]}
+                <div class="flex items-center border-b border-gray-300">
+                  <input
+                    class="px-2 hover:bg-white h-full"
+                    value={columnName}
+                    placeholder="Untitled"
+                    onchange={(e) => {
+                      const newName = e.currentTarget.value.trim();
+                      if (cell.mode?.map_type.destination && newName) {
+                        cell.mode.map_type.destination[newName] =
+                          cell.mode.map_type.destination[columnName];
+                        delete cell.mode.map_type.destination[columnName];
+                      }
+                    }}
+                  />
+                  <select
+                    class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                    bind:value={column.type}
+                  >
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
+                  </select>
+                  <label class="swap hover:bg-yellow-200 h-full">
+                    <input type="checkbox" bind:checked={column.nullable} />
+                    <div class="swap-on" title="Not Null">
+                      <SquareDashed class="px-1" />
+                    </div>
+                    <div class="swap-off" title="Null">
+                      <Vote class="px-1" />
+                    </div>
+                  </label>
+                  <button
+                    class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
+                    onclick={() => {
+                      delete cell.mode?.map_type.destination![columnName];
+                    }}
+                  >
+                    <Trash class="px-1" />
+                  </button>
+                </div>
+              {/each}
+            {/if}
           </div>
         {/if}
         <div class="flex flex-col items-center border-l border-gray-300">

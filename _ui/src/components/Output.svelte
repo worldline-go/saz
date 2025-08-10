@@ -17,6 +17,12 @@
   const prevPage = () => {
     offset = Math.max(-limit + offset, 0);
   };
+
+  $effect(() => {
+    if ($storeOutput) {
+      offset = 0;
+    }
+  });
 </script>
 
 <div>

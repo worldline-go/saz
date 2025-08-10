@@ -52,8 +52,9 @@ type Mode struct {
 }
 
 type MapType struct {
-	Enabled bool                  `json:"enabled"`
-	Column  map[string]ColumnType `json:"column"`
+	Enabled     bool                  `json:"enabled"`
+	Column      map[string]ColumnType `json:"column"`
+	Destination map[string]ColumnType `json:"destination"`
 }
 
 type ColumnType struct {

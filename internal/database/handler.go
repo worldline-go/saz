@@ -123,7 +123,7 @@ func (d *Database) IterGet(ctx context.Context, name, query string, mapType serv
 				return
 			}
 
-			if !yield(Struct2Map(record), nil) {
+			if !yield(Struct2Map(record, mapType), nil) {
 				return
 			}
 		}

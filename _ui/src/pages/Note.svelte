@@ -7,6 +7,7 @@
     Plus,
     ArrowRight,
     Save,
+    Notebook,
   } from "@lucide/svelte";
   import type { cell, notebook } from "@/helper/model";
   import { storeInfo, storeNoteIds } from "@/store/store";

@@ -18,6 +18,7 @@ require (
 	github.com/rakunlabs/chu v0.2.5
 	github.com/rakunlabs/into v0.4.1
 	github.com/rakunlabs/logi v0.4.1
+	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cast v1.9.2
 	github.com/worldline-go/conn v0.1.5
 	github.com/worldline-go/igmigrator/v2 v2.4.0
@@ -89,7 +90,6 @@ require (
 	github.com/rytsh/liz/file v0.1.4 // indirect
 	github.com/rytsh/liz/shutdown v0.1.0 // indirect
 	github.com/rytsh/mugo v0.8.5 // indirect
-	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/tdewolff/minify/v2 v2.23.10 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect

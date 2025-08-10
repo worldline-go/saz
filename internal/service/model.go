@@ -63,6 +63,7 @@ type ColumnType struct {
 
 type Storer interface {
 	Get(ctx context.Context, id string) (*Note, error)
+	GetWithPath(ctx context.Context, path string) (*Note, error)
 	Save(ctx context.Context, note *Note) error
 	GetNotes(ctx context.Context) ([]IDName, error)
 }

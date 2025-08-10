@@ -51,6 +51,7 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 
 	baseGroup := mux.Group(cfg.BasePath)
 	baseGroup.POST("/api/v1/run", s.run)
+	baseGroup.POST("/api/v1/run/{note}", s.runNote)
 	baseGroup.GET("/api/v1/info", s.info)
 	baseGroup.GET("/api/v1/notes", s.getNotes)
 	baseGroup.GET("/api/v1/notes/{id}", s.getNote)

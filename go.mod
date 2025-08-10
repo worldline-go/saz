@@ -9,7 +9,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/microsoft/go-mssqldb v1.9.2
-	github.com/rakunlabs/ada v0.1.6
+	github.com/rakunlabs/ada v0.1.8
 	github.com/rakunlabs/ada/middleware/cors v0.1.0
 	github.com/rakunlabs/ada/middleware/folder v0.1.0
 	github.com/rakunlabs/ada/middleware/log v0.1.0

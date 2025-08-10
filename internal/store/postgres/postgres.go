@@ -96,6 +96,29 @@ func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
 	}, nil
 }
 
+func (s *Postgres) GetWithPath(ctx context.Context, path string) (*service.Note, error) {
+	if path == "" {
+		return nil, fmt.Errorf("note path is empty; %w", service.ErrBadRequest)
+	}
+
+	var note Note
+	isFound, err := s.goqu.From(s.tableNotes).Where(goqu.Ex{"path": path}).ScanStructContext(ctx, &note)
+	if err != nil {
+		return nil, fmt.Errorf("get note by path %s: %w", path, err)
+	}
+
+	if !isFound {
+		return nil, fmt.Errorf("note with path %s not found; %w", path, service.ErrNotExists)
+	}
+
+	return &service.Note{
+		ID:      note.ID,
+		Name:    note.Name,
+		Path:    note.Path,
+		Content: note.Content.V,
+	}, nil
+}
+
 func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 	dbNote := Note{
 		ID:        note.ID,

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/rakunlabs/logi"
 )
@@ -19,8 +20,8 @@ func New(db Database, store Storer) *Service {
 	}
 }
 
-func (s *Service) Run(ctx context.Context, cell Cell) (Result, error) {
-	if cell.DBType == "" || cell.Content == "" {
+func (s *Service) Run(ctx context.Context, cell *Cell) (Result, error) {
+	if cell == nil || cell.DBType == "" || cell.Content == "" {
 		return nil, fmt.Errorf("invalid cell; %w", ErrBadRequest)
 	}
 
@@ -65,6 +66,41 @@ func (s *Service) Run(ctx context.Context, cell Cell) (Result, error) {
 	}
 
 	return s.db.Exec(ctx, cell.DBType, cell.Content)
+}
+
+func (s *Service) RunNote(ctx context.Context, notePath string) error {
+	if notePath == "" {
+		return fmt.Errorf("note path is empty; %w", ErrBadRequest)
+	}
+
+	note, err := s.store.GetWithPath(ctx, notePath)
+	if err != nil {
+		return fmt.Errorf("get note by path %s: %w", notePath, err)
+	}
+
+	logNote := slog.Group("note", slog.String("name", note.Name), slog.String("path", note.Path))
+	logi.Ctx(ctx).Info("starting note execution", logNote)
+
+	for i := range note.Content.Cells {
+		logCell := slog.Group("cell", slog.String("description", note.Content.Cells[i].Description.V), slog.Int("number", i+1))
+		logi.Ctx(ctx).Info("executing cell", logNote, logCell)
+
+		note.Content.Cells[i].Result.V = false
+		result, err := s.Run(ctx, &note.Content.Cells[i])
+		if err != nil {
+			logi.Ctx(ctx).Error("failed to run cell", logNote, logCell, slog.String("error", err.Error()))
+
+			return err
+		}
+
+		logi.Ctx(ctx).Info("cell executed successfully",
+			logNote, logCell,
+			slog.Int64("row_affected", result.RowsAffected()),
+			slog.Duration("duration", result.Duration()),
+		)
+	}
+
+	return nil
 }
 
 func (s *Service) DatabaseList() []string {

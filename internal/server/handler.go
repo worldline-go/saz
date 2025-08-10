@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,8 +15,8 @@ import (
 func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 	ctx := Context(r)
 
-	var req service.Cell
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var cell service.Cell
+	if err := json.NewDecoder(r.Body).Decode(&cell); err != nil {
 		ada.JSON(w, http.StatusBadRequest, Response{
 			Message: "Invalid request format",
 			Error:   err.Error(),
@@ -24,13 +25,23 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.service.Run(ctx, req)
+	result, err := s.service.Run(ctx, &cell)
 	if err != nil {
 		if errors.Is(err, service.ErrNotExists) {
 			ada.JSON(w, http.StatusNotFound, Response{
-				Message: "Database not found",
+				Message: "Resource not found",
 				Error:   err.Error(),
 			})
+
+			return
+		}
+
+		if errors.Is(err, service.ErrBadRequest) {
+			ada.JSON(w, http.StatusBadRequest, Response{
+				Message: "Invalid cell data",
+				Error:   err.Error(),
+			})
+
 			return
 		}
 
@@ -47,6 +58,43 @@ func (s *Server) run(w http.ResponseWriter, r *http.Request) {
 		Columns:      result.Columns(),
 		Rows:         result.Rows(),
 		Duration:     result.Duration().Truncate(time.Microsecond).String(),
+	})
+}
+
+func (s *Server) runNote(w http.ResponseWriter, r *http.Request) {
+	ctx := context.WithoutCancel(Context(r))
+
+	noteName := r.PathValue("note")
+
+	if err := s.service.RunNote(ctx, noteName); err != nil {
+		if errors.Is(err, service.ErrNotExists) {
+			ada.JSON(w, http.StatusNotFound, Response{
+				Message: "Resource not found",
+				Error:   err.Error(),
+			})
+
+			return
+		}
+
+		if errors.Is(err, service.ErrBadRequest) {
+			ada.JSON(w, http.StatusBadRequest, Response{
+				Message: "Invalid note name",
+				Error:   err.Error(),
+			})
+
+			return
+		}
+
+		ada.JSON(w, http.StatusInternalServerError, Response{
+			Message: "Failed to execute query",
+			Error:   err.Error(),
+		})
+
+		return
+	}
+
+	ada.JSON(w, http.StatusOK, Response{
+		Message: "Note executed successfully",
 	})
 }
 

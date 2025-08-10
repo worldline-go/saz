@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/worldline-go/saz/internal/service"
 	"github.com/worldline-go/types"
@@ -82,9 +83,40 @@ func Struct2Map(v any) map[string]any {
 		value := val.Field(i)
 
 		if value.IsValid() && value.CanInterface() {
+			// check if interface is string than sanitize utf8
+			switch v := value.Interface().(type) {
+			case string:
+				result[field.Tag.Get("db")] = sanitizeString(v)
+				continue
+			case types.Null[string]:
+				if v.Valid {
+					v.V = sanitizeString(v.V)
+					result[field.Tag.Get("db")] = v
+					continue
+				}
+			}
+
 			result[field.Tag.Get("db")] = value.Interface()
 		}
 	}
 
 	return result
+}
+
+func sanitizeString(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var b strings.Builder
+	for i, r := range s {
+		if r == utf8.RuneError {
+			_, size := utf8.DecodeRuneInString(s[i:])
+			if size == 1 {
+				// skip invalid byte
+				continue
+			}
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }

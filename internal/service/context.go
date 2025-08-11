@@ -13,7 +13,7 @@ func UserContext(ctx context.Context) string {
 		return user
 	}
 
-	return "unknown"
+	return ""
 }
 
 func ContextWithUser(ctx context.Context, user string) context.Context {

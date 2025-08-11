@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rakunlabs/tummy"
 	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/service"
@@ -53,9 +53,13 @@ func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 		return nil, fmt.Errorf("connect to store postgres: %w", err)
 	}
 
-	dbGoqu := goqu.New("postgres", dbConn)
-
 	slog.Info("connected to store postgres")
+
+	return conn(cfg, dbConn)
+}
+
+func conn(cfg *config.StorePostgres, dbConn *sqlx.DB) (*Postgres, error) {
+	dbGoqu := goqu.New("postgres", dbConn)
 
 	return &Postgres{
 		db:         dbConn,
@@ -138,8 +142,8 @@ func (s *Postgres) Save(ctx context.Context, note *service.Note) error {
 		Content:   types.NewJSON(note.Content),
 		Path:      note.Path,
 		UpdatedBy: types.NewNull(service.UserContext(ctx)),
-		UpdatedAt: types.NewTimeNull(time.Now()),
-		CreatedAt: types.NewTimeNull(time.Now()),
+		UpdatedAt: types.NewTimeNull(tummy.Now()),
+		CreatedAt: types.NewTimeNull(tummy.Now()),
 	}
 
 	// insert or update the note with goqu

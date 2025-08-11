@@ -54,6 +54,8 @@
   };
 
   const playNotebook = (path: string) => {
+    addToast("Running notebook...", "info");
+    storeOutput.set(null);
     requestRunNotebook(path)
       .then((response) => {
         storeOutput.set(null);

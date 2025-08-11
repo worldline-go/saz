@@ -35,9 +35,12 @@
   }: { deleteFunc: () => void; cell: cellType } = $props();
 
   const runQuery = () => {
+    addToast("Running cell...", "info");
+    storeOutput.set(null);
     requestRun(cell)
       .then((response) => {
         storeOutput.set(response.data);
+        addToast("Cell run successfully", "info");
       })
       .catch((error) => {
         if (error.response) {

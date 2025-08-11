@@ -43,23 +43,40 @@ type Cell struct {
 }
 
 type Mode struct {
-	Enabled bool    `json:"enabled"`
-	Name    string  `json:"name"`
-	DBType  string  `json:"db_type"`
-	Table   string  `json:"table"`
-	Wipe    bool    `json:"wipe"`
-	MapType MapType `json:"map_type"`
+	Enabled   bool      `json:"enabled"`
+	Name      string    `json:"name"`
+	DBType    string    `json:"db_type"`
+	Table     string    `json:"table"`
+	Wipe      bool      `json:"wipe"`
+	SkipError SkipError `json:"skip_error"`
+	MapType   MapType   `json:"map_type"`
+}
+
+type SkipError struct {
+	Enabled bool   `json:"enabled"`
+	Message string `json:"message"`
 }
 
 type MapType struct {
-	Enabled     bool                  `json:"enabled"`
-	Column      map[string]ColumnType `json:"column"`
-	Destination map[string]ColumnType `json:"destination"`
+	Enabled     bool                          `json:"enabled"`
+	Column      map[string]ColumnType         `json:"column"`
+	Destination map[string]ColumnTypeTemplate `json:"destination"`
 }
 
 type ColumnType struct {
 	Type     string `json:"type"`
 	Nullable bool   `json:"nullable"`
+}
+
+type ColumnTypeTemplate struct {
+	Type     string   `json:"type"`
+	Nullable bool     `json:"nullable"`
+	Template Template `json:"template"`
+}
+
+type Template struct {
+	Enabled bool   `json:"enabled"`
+	Value   string `json:"value"`
 }
 
 type Storer interface {
@@ -85,5 +102,5 @@ type Database interface {
 	Exec(ctx context.Context, name, query string) (Result, error)
 
 	IterGet(ctx context.Context, name, query string, mapType MapType) (iter.Seq2[map[string]any, error], error)
-	IterSet(ctx context.Context, name, table string, wipe bool, rows iter.Seq2[map[string]any, error]) (Result, error)
+	IterSet(ctx context.Context, name, table string, wipe bool, skipError SkipError, rows iter.Seq2[map[string]any, error]) (Result, error)
 }

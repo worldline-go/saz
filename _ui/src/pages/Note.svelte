@@ -8,12 +8,14 @@
     ArrowRight,
     Save,
     Notebook,
+    Play,
   } from "@lucide/svelte";
   import type { cell, notebook } from "@/helper/model";
-  import { storeInfo, storeNoteIds } from "@/store/store";
+  import { storeInfo, storeNoteIds, storeOutput } from "@/store/store";
   import { ulid } from "ulid";
   import { reorder, useSortable } from "@/helper/sort.svelte";
-  import { requestNote, requestSave } from "@/helper/call";
+  import { requestNote, requestRunNotebook, requestSave } from "@/helper/call";
+  import { addToast } from "@/store/toast";
 
   let { params } = $props<{ params: { id: string } }>();
   let notebookID = $state<string>(ulid());
@@ -43,6 +45,26 @@
 
   const removeCell = (id: string) => {
     cells = cells.filter((cell) => cell.id !== id);
+  };
+
+  const playNotebook = (path: string) => {
+    requestRunNotebook(path)
+      .then((response) => {
+        storeOutput.set(null);
+      })
+      .catch((error) => {
+        if (error.response) {
+          storeOutput.set({
+            columns: ["message", "error"],
+            rows: [
+              [error.response?.data?.message, error.response?.data?.error],
+            ],
+          });
+        } else {
+          storeOutput.set(null);
+        }
+        addToast("Error running query: " + error.message, "alert");
+      });
   };
 
   const saveNotebook = () => {
@@ -132,6 +154,13 @@
           placeholder="path-to-notebook"
         />
         <button
+          class="text-black px-2 py-1 hover:cursor-pointer hover:bg-red-500 hover:text-white flex gap-1"
+          onclick={() => playNotebook(path)}
+          title="Before to play need to save first"
+        >
+          <Play />
+        </button>
+        <button
           class="text-black px-2 py-1 hover:cursor-pointer hover:bg-blue-500 hover:text-white flex gap-1"
           onclick={saveNotebook}
         >
@@ -151,18 +180,21 @@
               >
                 <GripVertical />
               </button>
-              <button
-                class="text-gray-500 hover:bg-gray-200 hover:cursor-pointer"
-                onclick={() => {
-                  cell.collapsed = !cell.collapsed;
-                }}
-              >
-                {#if cell.collapsed}
-                  <ArrowRight />
-                {:else}
-                  <ArrowDown />
-                {/if}
-              </button>
+              <div class="flex items-center flex-col">
+                <span>{index + 1}</span>
+                <button
+                  class="text-gray-500 hover:bg-gray-200 hover:cursor-pointer flex-1"
+                  onclick={() => {
+                    cell.collapsed = !cell.collapsed;
+                  }}
+                >
+                  {#if cell.collapsed}
+                    <ArrowRight />
+                  {:else}
+                    <ArrowDown />
+                  {/if}
+                </button>
+              </div>
             </div>
             <Query
               bind:cell={cells[index]}

@@ -22,6 +22,10 @@
     SquareDashed,
     Plus,
     Vote,
+    RefreshCw,
+    RefreshCwOff,
+    Dna,
+    DnaOff,
   } from "@lucide/svelte";
   import type { cell as cellType } from "@/helper/model";
 
@@ -36,7 +40,16 @@
         storeOutput.set(response.data);
       })
       .catch((error) => {
-        storeOutput.set(null);
+        if (error.response) {
+          storeOutput.set({
+            columns: ["message", "error"],
+            rows: [
+              [error.response?.data?.message, error.response?.data?.error],
+            ],
+          });
+        } else {
+          storeOutput.set(null);
+        }
         addToast("Error running query: " + error.message, "alert");
       });
   };
@@ -53,6 +66,10 @@
           db_type: cell.db_type,
           table: "",
           wipe: false,
+          skip_error: {
+            enabled: false,
+            message: "",
+          },
           map_type: {
             enabled: false,
             column: {},
@@ -161,47 +178,53 @@
               </button>
             </span>
             {#if cell.mode?.map_type.column}
-              {#each Object.entries(cell.mode.map_type.column) as [columnName, column]}
-                <div class="flex items-center border-b border-gray-300">
-                  <input
-                    class="px-2 hover:bg-white h-full"
-                    value={columnName}
-                    placeholder="Untitled"
-                    onchange={(e) => {
-                      const newName = e.currentTarget.value.trim();
-                      if (cell.mode?.map_type.column && newName) {
-                        cell.mode.map_type.column[newName] =
-                          cell.mode.map_type.column[columnName];
-                        delete cell.mode.map_type.column[columnName];
-                      }
-                    }}
-                  />
-                  <select
-                    class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
-                    bind:value={column.type}
+              <div class="w-full border-l-4 border-teal-300">
+                {#each Object.entries(cell.mode.map_type.column) as [columnName, column]}
+                  <div
+                    class="flex items-center justify-between border-b border-gray-300 w-full"
                   >
-                    <option value="string">String</option>
-                    <option value="number">Number</option>
-                  </select>
-                  <label class="swap hover:bg-yellow-200 h-full">
-                    <input type="checkbox" bind:checked={column.nullable} />
-                    <div class="swap-on" title="Not Null">
-                      <SquareDashed class="px-1" />
+                    <input
+                      class="px-2 hover:bg-white h-full"
+                      value={columnName}
+                      placeholder="Untitled"
+                      onchange={(e) => {
+                        const newName = e.currentTarget.value.trim();
+                        if (cell.mode?.map_type.column && newName) {
+                          cell.mode.map_type.column[newName] =
+                            cell.mode.map_type.column[columnName];
+                          delete cell.mode.map_type.column[columnName];
+                        }
+                      }}
+                    />
+                    <div class="flex items-center">
+                      <select
+                        class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                        bind:value={column.type}
+                      >
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                      </select>
+                      <label class="swap hover:bg-yellow-200 h-full">
+                        <input type="checkbox" bind:checked={column.nullable} />
+                        <div class="swap-on" title="Not Null">
+                          <SquareDashed class="px-1" />
+                        </div>
+                        <div class="swap-off" title="Null">
+                          <Vote class="px-1" />
+                        </div>
+                      </label>
+                      <button
+                        class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
+                        onclick={() => {
+                          delete cell.mode?.map_type.column![columnName];
+                        }}
+                      >
+                        <Trash class="px-1" />
+                      </button>
                     </div>
-                    <div class="swap-off" title="Null">
-                      <Vote class="px-1" />
-                    </div>
-                  </label>
-                  <button
-                    class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
-                    onclick={() => {
-                      delete cell.mode?.map_type.column![columnName];
-                    }}
-                  >
-                    <Trash class="px-1" />
-                  </button>
-                </div>
-              {/each}
+                  </div>
+                {/each}
+              </div>
             {/if}
             <span
               class={"w-full min-w-56 border-b border-gray-300 flex items-center justify-between leading-[normal]"}
@@ -219,6 +242,10 @@
                     cell.mode.map_type.destination[""] = {
                       type: "string",
                       nullable: false,
+                      template: {
+                        enabled: false,
+                        value: "",
+                      },
                     };
                   }
                 }}
@@ -227,47 +254,76 @@
               </button>
             </span>
             {#if cell.mode?.map_type.destination}
-              {#each Object.entries(cell.mode.map_type.destination) as [columnName, column]}
-                <div class="flex items-center border-b border-gray-300">
-                  <input
-                    class="px-2 hover:bg-white h-full"
-                    value={columnName}
-                    placeholder="Untitled"
-                    onchange={(e) => {
-                      const newName = e.currentTarget.value.trim();
-                      if (cell.mode?.map_type.destination && newName) {
-                        cell.mode.map_type.destination[newName] =
-                          cell.mode.map_type.destination[columnName];
-                        delete cell.mode.map_type.destination[columnName];
-                      }
-                    }}
-                  />
-                  <select
-                    class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
-                    bind:value={column.type}
+              <div class="w-full border-l-4 border-blue-300">
+                {#each Object.entries(cell.mode.map_type.destination) as [columnName, column]}
+                  <div
+                    class="flex items-center justify-between border-b border-gray-300 w-full"
                   >
-                    <option value="string">String</option>
-                    <option value="number">Number</option>
-                  </select>
-                  <label class="swap hover:bg-yellow-200 h-full">
-                    <input type="checkbox" bind:checked={column.nullable} />
-                    <div class="swap-on" title="Not Null">
-                      <SquareDashed class="px-1" />
+                    <input
+                      class="px-2 hover:bg-white h-full"
+                      value={columnName}
+                      placeholder="Untitled"
+                      onchange={(e) => {
+                        const newName = e.currentTarget.value.trim();
+                        if (cell.mode?.map_type.destination && newName) {
+                          cell.mode.map_type.destination[newName] =
+                            cell.mode.map_type.destination[columnName];
+                          delete cell.mode.map_type.destination[columnName];
+                        }
+                      }}
+                    />
+                    <div class="flex items-center">
+                      <select
+                        class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                        bind:value={column.type}
+                      >
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                      </select>
+                      <label class="swap hover:bg-yellow-200 h-full">
+                        <input
+                          type="checkbox"
+                          bind:checked={column.template.enabled}
+                        />
+                        <div class="swap-on" title="Template Disabled">
+                          <RefreshCw class="px-1" />
+                        </div>
+                        <div class="swap-off" title="Template Enabled">
+                          <RefreshCwOff class="px-1" />
+                        </div>
+                      </label>
+                      <label class="swap hover:bg-yellow-200 h-full">
+                        <input type="checkbox" bind:checked={column.nullable} />
+                        <div class="swap-on" title="Not Null">
+                          <SquareDashed class="px-1" />
+                        </div>
+                        <div class="swap-off" title="Null">
+                          <Vote class="px-1" />
+                        </div>
+                      </label>
+                      <button
+                        class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
+                        onclick={() => {
+                          delete cell.mode?.map_type.destination![columnName];
+                        }}
+                      >
+                        <Trash class="px-1" />
+                      </button>
                     </div>
-                    <div class="swap-off" title="Null">
-                      <Vote class="px-1" />
+                  </div>
+                  {#if column.template.enabled}
+                    <div class=" w-full border-b border-gray-300">
+                      <input
+                        class="px-2 py-1 hover:bg-white h-full w-full border-l-4 border-yellow-200"
+                        type="text"
+                        placeholder="Template Value"
+                        bind:value={column.template.value}
+                        disabled={!column.template.enabled}
+                      />
                     </div>
-                  </label>
-                  <button
-                    class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
-                    onclick={() => {
-                      delete cell.mode?.map_type.destination![columnName];
-                    }}
-                  >
-                    <Trash class="px-1" />
-                  </button>
-                </div>
-              {/each}
+                  {/if}
+                {/each}
+              </div>
             {/if}
           </div>
         {/if}
@@ -278,7 +334,7 @@
               cell.mode.enabled ? "bg-green-100" : "bg-red-100",
             ]}
           >
-            <span class="px-2">Transfer Mode</span>
+            <span class="px-2">Transfer</span>
             <div>
               <label class="swap hover:bg-yellow-200">
                 <input
@@ -299,6 +355,18 @@
                 </div>
                 <div class="swap-off" title="Wipe before transfer">
                   <ShieldPlus class="px-1" />
+                </div>
+              </label>
+              <label class="swap hover:bg-yellow-200">
+                <input
+                  type="checkbox"
+                  bind:checked={cell.mode.skip_error.enabled}
+                />
+                <div class="swap-on" title="Disabled Skip Error">
+                  <Dna class="px-1" />
+                </div>
+                <div class="swap-off" title="Skip Error">
+                  <DnaOff class="px-1" />
                 </div>
               </label>
               <label class="swap hover:bg-yellow-200">
@@ -326,6 +394,15 @@
             placeholder="Table Name"
             bind:value={cell.mode.table}
           />
+          {#if cell.mode.skip_error.enabled}
+            <input
+              class="bg-yellow-100 border-b border-t border-gray-300 hover:cursor-text hover:bg-white px-2 py-1 w-full"
+              type="text"
+              placeholder="Error Message"
+              bind:value={cell.mode.skip_error.message}
+              disabled={!cell.mode.skip_error.enabled}
+            />
+          {/if}
         </div>
       {/if}
     </div>

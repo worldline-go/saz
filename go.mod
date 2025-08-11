@@ -9,6 +9,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/microsoft/go-mssqldb v1.9.2
+	github.com/oklog/ulid/v2 v2.1.1
 	github.com/rakunlabs/ada v0.1.8
 	github.com/rakunlabs/ada/middleware/cors v0.1.0
 	github.com/rakunlabs/ada/middleware/folder v0.1.0
@@ -18,6 +19,7 @@ require (
 	github.com/rakunlabs/chu v0.2.5
 	github.com/rakunlabs/into v0.4.1
 	github.com/rakunlabs/logi v0.4.1
+	github.com/rytsh/mugo v0.8.5
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cast v1.9.2
 	github.com/worldline-go/conn v0.1.5
@@ -84,12 +86,10 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/rytsh/liz/file v0.1.4 // indirect
 	github.com/rytsh/liz/shutdown v0.1.0 // indirect
-	github.com/rytsh/mugo v0.8.5 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/tdewolff/minify/v2 v2.23.10 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect

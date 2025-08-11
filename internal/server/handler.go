@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Server) run(w http.ResponseWriter, r *http.Request) {
-	ctx := Context(r)
+	ctx := context.WithoutCancel(Context(r))
 
 	var cell service.Cell
 	if err := json.NewDecoder(r.Body).Decode(&cell); err != nil {

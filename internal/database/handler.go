@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oklog/ulid/v2"
 	"github.com/spf13/cast"
 	"github.com/worldline-go/saz/internal/service"
 )
@@ -123,7 +124,13 @@ func (d *Database) IterGet(ctx context.Context, name, query string, mapType serv
 				return
 			}
 
-			if !yield(Struct2Map(record, mapType), nil) {
+			mapRecord, err := Struct2Map(record, mapType)
+			if err != nil {
+				_ = !yield(nil, fmt.Errorf("map struct to map: %w", err))
+				return
+			}
+
+			if !yield(mapRecord, nil) {
 				return
 			}
 		}
@@ -134,7 +141,7 @@ func (d *Database) IterGet(ctx context.Context, name, query string, mapType serv
 	}, nil
 }
 
-func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, rows iter.Seq2[map[string]any, error]) (service.Result, error) {
+func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, skipError service.SkipError, rows iter.Seq2[map[string]any, error]) (service.Result, error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
 		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
@@ -160,6 +167,11 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, r
 
 	var counter int64
 
+	var savePoint string
+	if skipError.Enabled {
+		savePoint = fmt.Sprintf("savepoint_%s", ulid.Make())
+	}
+
 	for row, err := range rows {
 		if err != nil {
 			return nil, fmt.Errorf("iterate rows: %w", err)
@@ -178,8 +190,23 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, r
 		}
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(columns, ","), strings.Join(placeholders, ","))
 
-		if _, err := tx.NamedExec(query, row); err != nil {
+		if skipError.Enabled {
+			tx.ExecContext(ctx, "SAVEPOINT "+savePoint)
+		}
+
+		if _, err := tx.NamedExecContext(ctx, query, row); err != nil {
+			if skipError.Enabled {
+				if strings.Contains(err.Error(), skipError.Message) {
+					tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+savePoint)
+					continue
+				}
+			}
+
 			return nil, fmt.Errorf("insert row: %w; query %s, row %v", err, query, row)
+		}
+
+		if skipError.Enabled {
+			tx.ExecContext(ctx, "RELEASE SAVEPOINT "+savePoint)
 		}
 
 		counter++

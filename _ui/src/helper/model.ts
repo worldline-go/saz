@@ -17,7 +17,13 @@ export type modeTransfer = {
   table: string;
   wipe: boolean;
   map_type: map_type;
+  skip_error: skip_error;
 }
+
+export type skip_error = {
+  enabled: boolean;
+  message: string;
+};
 
 export type map_type = {
   enabled: boolean;
@@ -28,7 +34,13 @@ export type map_type = {
   destination?: Record<string, {
     type: "number" | "string";
     nullable: boolean;
+    template: template;
   }>;
+}
+
+export type template = {
+  enabled: boolean;
+  value: string;
 }
 
 export type notebook = {

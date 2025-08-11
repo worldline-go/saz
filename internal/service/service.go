@@ -20,17 +20,27 @@ func New(db Database, store Storer) *Service {
 	}
 }
 
-func (s *Service) Run(ctx context.Context, cell *Cell) (Result, error) {
+func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error) {
 	if cell == nil || cell.DBType == "" || cell.Content == "" {
 		return nil, fmt.Errorf("invalid cell; %w", ErrBadRequest)
 	}
 
-	logi.Ctx(ctx).Debug("running cell",
+	logi.Ctx(ctx).Info("running cell",
 		"db_type", cell.DBType,
-		"content", cell.Content,
-		"result", cell.Result.V,
-		"mode", cell.Mode.V,
+		"description", cell.Description.V,
+		"mode", cell.Mode.V.Name,
 	)
+
+	defer func() {
+		if err != nil {
+			logi.Ctx(ctx).Error("failed to run cell", slog.String("error", err.Error()))
+		} else {
+			logi.Ctx(ctx).Info("cell executed successfully",
+				slog.Int64("row_affected", result.RowsAffected()),
+				slog.Duration("duration", result.Duration()),
+			)
+		}
+	}()
 
 	if cell.Mode.V.Enabled {
 		switch cell.Mode.V.Name {
@@ -50,7 +60,7 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (Result, error) {
 				}
 			}()
 
-			result, err := s.db.IterSet(ctx, cell.Mode.V.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, iterGet)
+			result, err := s.db.IterSet(ctx, cell.Mode.V.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, cell.Mode.V.SkipError, iterGet)
 			if err != nil {
 				return nil, fmt.Errorf("set iterator: %w", err)
 			}
@@ -83,21 +93,13 @@ func (s *Service) RunNote(ctx context.Context, notePath string) error {
 
 	for i := range note.Content.Cells {
 		logCell := slog.Group("cell", slog.String("description", note.Content.Cells[i].Description.V), slog.Int("number", i+1))
-		logi.Ctx(ctx).Info("executing cell", logNote, logCell)
+		ctx = logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
 
 		note.Content.Cells[i].Result.V = false
-		result, err := s.Run(ctx, &note.Content.Cells[i])
+		_, err := s.Run(ctx, &note.Content.Cells[i])
 		if err != nil {
-			logi.Ctx(ctx).Error("failed to run cell", logNote, logCell, slog.String("error", err.Error()))
-
 			return err
 		}
-
-		logi.Ctx(ctx).Info("cell executed successfully",
-			logNote, logCell,
-			slog.Int64("row_affected", result.RowsAffected()),
-			slog.Duration("duration", result.Duration()),
-		)
 	}
 
 	return nil

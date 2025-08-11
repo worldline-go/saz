@@ -2,10 +2,12 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"reflect"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/rytsh/mugo/render"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
 	"github.com/worldline-go/saz/internal/service"
@@ -69,14 +71,14 @@ func GetStructType(col *sql.ColumnType, mapType service.MapType) reflect.Type {
 	return col.ScanType()
 }
 
-func Struct2Map(v any, mapType service.MapType) map[string]any {
+func Struct2Map(v any, mapType service.MapType) (map[string]any, error) {
 	val := reflect.ValueOf(v)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
 
 	if val.Kind() != reflect.Struct {
-		return nil
+		return nil, errors.New("input is not a struct")
 	}
 
 	result := make(map[string]any)
@@ -102,12 +104,17 @@ func Struct2Map(v any, mapType service.MapType) map[string]any {
 		}
 	}
 
-	return mapDestination(result, mapType)
+	result, err := mapDestination(result, mapType)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
-func mapDestination(result map[string]any, mapType service.MapType) map[string]any {
+func mapDestination(result map[string]any, mapType service.MapType) (map[string]any, error) {
 	if !mapType.Enabled {
-		return result
+		return result, nil
 	}
 
 	mappedResult := make(map[string]any, len(result))
@@ -115,14 +122,20 @@ func mapDestination(result map[string]any, mapType service.MapType) map[string]a
 		if colType, ok := mapType.Destination[k]; ok {
 			switch colType.Type {
 			case "string":
-				vStr := getAnyString(v)
+				vStr, err := getAnyString(v, colType.Template)
+				if err != nil {
+					return nil, err
+				}
 				if colType.Nullable {
 					mappedResult[k] = vStr
 				} else {
 					mappedResult[k] = vStr.V
 				}
 			case "number":
-				vNum := getAnyNumber(v)
+				vNum, err := getAnyNumber(v, colType.Template)
+				if err != nil {
+					return nil, err
+				}
 				if colType.Nullable {
 					mappedResult[k] = vNum
 				} else {
@@ -136,36 +149,94 @@ func mapDestination(result map[string]any, mapType service.MapType) map[string]a
 		}
 	}
 
-	return mappedResult
+	return mappedResult, nil
 }
 
-func getAnyString(v any) types.Null[string] {
+func getAnyString(v any, t service.Template) (types.Null[string], error) {
 	if v == nil {
-		return types.NewNullWithValid("", false)
+		return types.NewNullWithValid("", false), nil
 	}
 
 	switch val := v.(type) {
 	case string:
-		return types.NewNull(val)
+		if t.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Value, val)
+			if err != nil {
+				return types.Null[string]{}, err
+			}
+			return types.NewNull(string(vRendered)), nil
+		}
+		return types.NewNull(val), nil
 	case types.Null[string]:
-		return val
+		if t.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Value, val.V)
+			if err != nil {
+				return types.Null[string]{}, err
+			}
+			return types.NewNullWithValid(string(vRendered), val.Valid), nil
+		}
+		return val, nil
 	default:
-		return types.NewNull(cast.ToString(v))
+		if t.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Value, cast.ToString(v))
+			if err != nil {
+				return types.Null[string]{}, err
+			}
+			return types.NewNullWithValid(string(vRendered), true), nil
+		}
+		return types.NewNull(cast.ToString(v)), nil
 	}
 }
 
-func getAnyNumber(v any) types.NullDecimal {
+func getAnyNumber(v any, t service.Template) (types.NullDecimal, error) {
 	if v == nil {
-		return types.NullDecimal{Valid: false}
+		return types.NullDecimal{Valid: false}, nil
 	}
 
 	switch val := v.(type) {
 	case types.Decimal:
-		return types.NullDecimal{Decimal: val, Valid: true}
+		if t.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Value, val.String())
+			if err != nil {
+				return types.NullDecimal{}, err
+			}
+			decimalVal, err := decimal.NewFromString(string(vRendered))
+			if err != nil {
+				return types.NullDecimal{}, err
+			}
+			return types.NullDecimal{Decimal: decimalVal, Valid: true}, nil
+		}
+		return types.NullDecimal{Decimal: val, Valid: true}, nil
 	case types.NullDecimal:
-		return val
+		if t.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Value, val.Decimal.String())
+			if err != nil {
+				return types.NullDecimal{}, err
+			}
+			decimalVal, err := decimal.NewFromString(string(vRendered))
+			if err != nil {
+				return types.NullDecimal{}, err
+			}
+			return types.NullDecimal{Decimal: decimalVal, Valid: val.Valid}, nil
+		}
+		return val, nil
 	default:
-		return types.NullDecimal{Decimal: decimal.RequireFromString(cast.ToString(v)), Valid: true}
+		if t.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Value, cast.ToString(v))
+			if err != nil {
+				return types.NullDecimal{}, err
+			}
+			decimalVal, err := decimal.NewFromString(string(vRendered))
+			if err != nil {
+				return types.NullDecimal{}, err
+			}
+			return types.NullDecimal{Decimal: decimalVal, Valid: true}, nil
+		}
+		decimalVal, err := decimal.NewFromString(cast.ToString(v))
+		if err != nil {
+			return types.NullDecimal{}, err
+		}
+		return types.NullDecimal{Decimal: decimalVal, Valid: true}, nil
 	}
 }
 

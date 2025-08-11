@@ -3,14 +3,12 @@ import axios from "axios";
 import type { info, notebook, idName, cell } from "./model";
 import { addToast } from "@/store/toast";
 
-// type RequestResponse = {
-//   message?: string;
-//   data?: any;
-//   error?: string;
-// }
-
 export const requestRun = (data: cell) => {
   return axios.post("./api/v1/run", data);
+};
+
+export const requestRunNotebook = (path: string) => {
+  return axios.post(`./api/v1/run/${path}`);
 };
 
 export const requestInfo = async () => {

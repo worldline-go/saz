@@ -19,14 +19,16 @@
         </tr>
       </thead>
       <tbody>
-        {#each output?.rows?.slice(offset, +limit + offset) as row, index}
-          <tr>
-            <td>{index + offset + 1}</td>
-            {#each row as value}
-              <td title={value}>{value}</td>
-            {/each}
-          </tr>
-        {/each}
+        {#if output.rows}
+          {#each output?.rows?.slice(offset, +limit + offset) as row, index}
+            <tr>
+              <td>{index + offset + 1}</td>
+              {#each row as value}
+                <td title={value}>{value}</td>
+              {/each}
+            </tr>
+          {/each}
+        {/if}
       </tbody>
     </table>
   {/if}

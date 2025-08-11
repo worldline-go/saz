@@ -7,9 +7,9 @@
   let limit = $state(10);
 
   const nextPage = () => {
-    if ($storeOutput) {
-      if (+limit + offset < $storeOutput?.rows.length) {
-        offset = Math.min(+limit + offset, $storeOutput?.rows.length ?? 0);
+    if ($storeOutput && $storeOutput.rows) {
+      if (+limit + offset < $storeOutput?.rows?.length) {
+        offset = Math.min(+limit + offset, $storeOutput?.rows?.length ?? 0);
       }
     }
   };
@@ -46,7 +46,7 @@
             type="text"
             size={`${limit}`.length || 1}
             bind:value={limit}
-          />, Total: {$storeOutput?.rows.length ?? 0}
+          />, Total: {$storeOutput?.rows?.length ?? 0}
         </span>
       {/if}
       <button

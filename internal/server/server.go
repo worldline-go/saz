@@ -31,6 +31,8 @@ type Server struct {
 var uiFS embed.FS
 
 func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server, error) {
+	privateToken := cfg.PrivateToken
+
 	mux := ada.New()
 	mux.Use(
 		mrecover.Middleware(),
@@ -39,6 +41,23 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 		mlog.Middleware(),
 		metrichttp.Middleware(),
 		tracehttp.Middleware(),
+		func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if privateToken != "" {
+					token := r.Header.Get("Private-Token")
+					if token == privateToken {
+						next.ServeHTTP(w, r)
+						return
+					}
+
+					ada.JSON(w, http.StatusForbidden, Response{
+						Message: "Forbidden Request",
+					})
+				}
+
+				next.ServeHTTP(w, r)
+			})
+		},
 	)
 
 	s := &Server{

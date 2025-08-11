@@ -32,6 +32,8 @@ type Server struct {
 
 	Port string `cfg:"port" default:"8080"`
 	Host string `cfg:"host"`
+
+	PrivateToken string `cfg:"private_token" log:"-"`
 }
 
 type Database struct {

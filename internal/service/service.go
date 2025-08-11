@@ -94,6 +94,10 @@ func (s *Service) RunNote(ctx context.Context, notePath string) error {
 	for i := range note.Content.Cells {
 		logCell := slog.Group("cell", slog.String("description", note.Content.Cells[i].Description.V), slog.Int("number", i+1))
 		ctxCell := logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
+		if !note.Content.Cells[i].Enabled.V {
+			logi.Ctx(ctx).Info("cell is disabled, skipping execution", logCell)
+			continue
+		}
 
 		note.Content.Cells[i].Result.V = false
 		_, err := s.Run(ctxCell, &note.Content.Cells[i])

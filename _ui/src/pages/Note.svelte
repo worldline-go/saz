@@ -51,6 +51,7 @@
     requestRunNotebook(path)
       .then((response) => {
         storeOutput.set(null);
+        addToast("Notebook run successfully", "info");
       })
       .catch((error) => {
         if (error.response) {
@@ -78,8 +79,8 @@
         mode: cell.mode,
         description: cell.description,
         collapsed: cell.collapsed,
-        enabled: cell.enabled || true,
-        result: cell.result || false,
+        enabled: cell.enabled,
+        result: cell.result,
       });
     });
     const note: notebook = {
@@ -204,7 +205,7 @@
         {/each}
       </div>
       <button
-        class="text-black px-2 py-1 mt-2 flex w-full border-t border-b border-gray-300 hover:bg-blue-100 hover:cursor-pointer"
+        class="text-black px-2 py-1 mt-2 flex w-full border-t border-b border-black hover:bg-yellow-200 hover:cursor-pointer"
         onclick={addCell}
         title="Add a new cell"
       >

@@ -14,7 +14,7 @@ const toast = [] as Array<Toast>;
 
 export const storeToast = writable(toast);
 
-export const addToast = (message: string, type: Types = "info", timeout = 4000) => {
+export const addToast = (message: string, type: Types = "info", timeout = 3000) => {
   storeToast.update((v) => {
     const id = v.length == 0 ? 0 : v[v.length - 1].id + 1;
     return update(v, {

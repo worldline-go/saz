@@ -93,10 +93,10 @@ func (s *Service) RunNote(ctx context.Context, notePath string) error {
 
 	for i := range note.Content.Cells {
 		logCell := slog.Group("cell", slog.String("description", note.Content.Cells[i].Description.V), slog.Int("number", i+1))
-		ctx = logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
+		ctxCell := logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
 
 		note.Content.Cells[i].Result.V = false
-		_, err := s.Run(ctx, &note.Content.Cells[i])
+		_, err := s.Run(ctxCell, &note.Content.Cells[i])
 		if err != nil {
 			return err
 		}

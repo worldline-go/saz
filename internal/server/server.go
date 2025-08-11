@@ -75,6 +75,7 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 	baseGroup.GET("/api/v1/notes", s.getNotes)
 	baseGroup.GET("/api/v1/notes/{id}", s.getNote)
 	baseGroup.PUT("/api/v1/notes/{id}", s.putNote)
+	baseGroup.DELETE("/api/v1/notes/{id}", s.deleteNote)
 
 	// ////////////////////////////////////////////
 

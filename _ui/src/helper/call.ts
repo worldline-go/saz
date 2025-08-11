@@ -52,7 +52,11 @@ export const requestNote = async (id: string) => {
   }
 };
 
-export const requestSave = async (note: notebook) => {
+export const requestNoteDelete = (id: string) => {
+  return axios.delete(`./api/v1/notes/${id}`);
+};
+
+export const requestNoteSave = async (note: notebook) => {
   try {
     await axios.put(`./api/v1/notes/${note.id}`, note)
     storeNoteIds.update((ids) => {

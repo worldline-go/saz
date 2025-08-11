@@ -25,6 +25,7 @@ type Postgres struct {
 	goqu *goqu.Database
 
 	tableNotes exp.IdentifierExpression
+	tableCron  exp.IdentifierExpression
 }
 
 func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
@@ -60,6 +61,7 @@ func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 		db:         dbConn,
 		goqu:       dbGoqu,
 		tableNotes: goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "notes"),
+		tableCron:  goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "cron"),
 	}, nil
 }
 
@@ -78,22 +80,16 @@ func (s *Postgres) Get(ctx context.Context, id string) (*service.Note, error) {
 		return nil, fmt.Errorf("note ID is empty; %w", service.ErrBadRequest)
 	}
 
-	var note Note
-	isFound, err := s.goqu.From(s.tableNotes).Where(goqu.Ex{"id": id}).ScanStructContext(ctx, &note)
+	note, err := s.get(ctx, goqu.Ex{"id": id})
 	if err != nil {
+		if errors.Is(err, service.ErrNotExists) {
+			return nil, fmt.Errorf("note with ID %s not found; %w", id, service.ErrNotExists)
+		}
+
 		return nil, fmt.Errorf("get note by ID %s: %w", id, err)
 	}
 
-	if !isFound {
-		return nil, fmt.Errorf("note with ID %s not found; %w", id, service.ErrNotExists)
-	}
-
-	return &service.Note{
-		ID:      note.ID,
-		Name:    note.Name,
-		Path:    note.Path,
-		Content: note.Content.V,
-	}, nil
+	return note, nil
 }
 
 func (s *Postgres) GetWithPath(ctx context.Context, path string) (*service.Note, error) {
@@ -101,21 +97,37 @@ func (s *Postgres) GetWithPath(ctx context.Context, path string) (*service.Note,
 		return nil, fmt.Errorf("note path is empty; %w", service.ErrBadRequest)
 	}
 
-	var note Note
-	isFound, err := s.goqu.From(s.tableNotes).Where(goqu.Ex{"path": path}).ScanStructContext(ctx, &note)
+	note, err := s.get(ctx, goqu.Ex{"path": path})
 	if err != nil {
+		if errors.Is(err, service.ErrNotExists) {
+			return nil, fmt.Errorf("note with path %s not found; %w", path, service.ErrNotExists)
+		}
+
 		return nil, fmt.Errorf("get note by path %s: %w", path, err)
 	}
 
+	return note, nil
+}
+
+func (s *Postgres) get(ctx context.Context, ex goqu.Ex) (*service.Note, error) {
+	var note Note
+	isFound, err := s.goqu.From(s.tableNotes).Where(ex).ScanStructContext(ctx, &note)
+	if err != nil {
+		return nil, err
+	}
+
 	if !isFound {
-		return nil, fmt.Errorf("note with path %s not found; %w", path, service.ErrNotExists)
+		return nil, service.ErrNotExists
 	}
 
 	return &service.Note{
-		ID:      note.ID,
-		Name:    note.Name,
-		Path:    note.Path,
-		Content: note.Content.V,
+		ID:        note.ID,
+		Name:      note.Name,
+		Path:      note.Path,
+		Content:   note.Content.V,
+		UpdatedBy: note.UpdatedBy,
+		CreatedAt: note.CreatedAt,
+		UpdatedAt: note.UpdatedAt,
 	}, nil
 }
 
@@ -154,4 +166,26 @@ func (s *Postgres) GetNotes(ctx context.Context) ([]service.IDName, error) {
 	}
 
 	return idNames, nil
+}
+
+func (s *Postgres) Delete(ctx context.Context, id string) error {
+	if id == "" {
+		return fmt.Errorf("note ID is empty; %w", service.ErrBadRequest)
+	}
+
+	result, err := s.goqu.Delete(s.tableNotes).Where(goqu.Ex{"id": id}).Executor().ExecContext(ctx)
+	if err != nil {
+		return fmt.Errorf("delete note by ID %s: %w", id, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected after delete note by ID %s: %w", id, err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("note with ID %s not found; %w", id, service.ErrNotExists)
+	}
+
+	return nil
 }

@@ -128,6 +128,14 @@ func (s *Service) SaveNote(ctx context.Context, note *Note) error {
 	return s.store.Save(ctx, note)
 }
 
+func (s *Service) DeleteNote(ctx context.Context, id string) error {
+	if id == "" {
+		return fmt.Errorf("note ID is empty; %w", ErrBadRequest)
+	}
+
+	return s.store.Delete(ctx, id)
+}
+
 func (s *Service) GetNotes(ctx context.Context) ([]IDName, error) {
 	return s.store.GetNotes(ctx)
 }

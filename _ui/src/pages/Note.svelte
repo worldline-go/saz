@@ -7,15 +7,21 @@
     Plus,
     ArrowRight,
     Save,
-    Notebook,
     Play,
+    Trash,
   } from "@lucide/svelte";
   import type { cell, notebook } from "@/helper/model";
   import { storeInfo, storeNoteIds, storeOutput } from "@/store/store";
   import { ulid } from "ulid";
   import { reorder, useSortable } from "@/helper/sort.svelte";
-  import { requestNote, requestRunNotebook, requestSave } from "@/helper/call";
+  import {
+    requestNote,
+    requestRunNotebook,
+    requestNoteSave,
+    requestNoteDelete,
+  } from "@/helper/call";
   import { addToast } from "@/store/toast";
+  import { push } from "svelte-spa-router";
 
   let { params } = $props<{ params: { id: string } }>();
   let notebookID = $state<string>(ulid());
@@ -93,7 +99,7 @@
     };
     console.log("Saving notebook:", note);
 
-    requestSave(note);
+    requestNoteSave(note);
   };
 
   useSortable(() => sortable, {
@@ -118,6 +124,22 @@
       name = "";
       path = "";
       cells = [];
+    }
+  };
+
+  const deleteNotebook = (id: string) => {
+    if (confirm("Are you sure you want to delete this notebook?")) {
+      // Call the API to delete the notebook
+      requestNoteDelete(id)
+        .then(() => {
+          // Remove the notebook from the store
+          storeNoteIds.update((ids) => ids.filter((note) => note.id !== id));
+          push(`/`);
+          addToast("Notebook deleted successfully", "info");
+        })
+        .catch((error) => {
+          addToast("Error deleting notebook: " + error.message, "alert");
+        });
     }
   };
 
@@ -166,7 +188,12 @@
           onclick={saveNotebook}
         >
           <Save />
-          <span>Save</span>
+        </button>
+        <button
+          class="text-black px-2 py-1 hover:cursor-pointer hover:bg-red-500 hover:text-white flex gap-1"
+          onclick={() => deleteNotebook(notebookID)}
+        >
+          <Trash />
         </button>
       </div>
     </div>

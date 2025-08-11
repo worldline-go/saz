@@ -373,8 +373,8 @@ github.com/worldline-go/tell/metric/metrichttp v0.6.3 h1:B6fAhE+VPJFPfVOAOCYrWTX
 github.com/worldline-go/tell/metric/metrichttp v0.6.3/go.mod h1:rREbfCTApwogcraq4h2QY5ZGP0Jq7KOQdywrCvvozTE=
 github.com/worldline-go/tell/trace/tracehttp v0.1.0 h1:Wr50lW7ClcQdMArtJAj5q0MBu2GXDca4FIkRtfcGDCs=
 github.com/worldline-go/tell/trace/tracehttp v0.1.0/go.mod h1:SXQ/+j2VvF0qJjP+VBsdeisVXzmuDCL03GTBRdqazSs=
-github.com/worldline-go/types v0.4.9 h1:DW6+veusVDoBDcZQBEBRyrw1eq1VxezjUrUtNLhaZPY=
-github.com/worldline-go/types v0.4.9/go.mod h1:IFp+0gG4jKWeRTaUVf8iOJnzQ7DCic6Fjl+4nq9lU7Q=
+github.com/worldline-go/types v0.5.0 h1:sXoJX4KMCZYP5PdniLh3PouH5qxvCCcU7x/7Dz6qzvo=
+github.com/worldline-go/types v0.5.0/go.mod h1:IFp+0gG4jKWeRTaUVf8iOJnzQ7DCic6Fjl+4nq9lU7Q=
 github.com/xhit/go-str2duration/v2 v2.1.0 h1:lxklc02Drh6ynqX+DdPyp5pCKLUQpRT8bp8Ydu2Bstc=
 github.com/xhit/go-str2duration/v2 v2.1.0/go.mod h1:ohY8p+0f07DiV6Em5LKB0s2YpLtXVyJfNt1+BlmyAsU=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=

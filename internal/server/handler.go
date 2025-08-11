@@ -142,6 +142,37 @@ func (s *Server) putNote(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	if id == "" {
+		ada.JSON(w, http.StatusBadRequest, Response{
+			Message: "Note ID is required",
+		})
+		return
+	}
+
+	if err := s.service.DeleteNote(ctx, id); err != nil {
+		if errors.Is(err, service.ErrNotExists) {
+			ada.JSON(w, http.StatusNotFound, Response{
+				Message: "Note not found",
+				Error:   err.Error(),
+			})
+			return
+		}
+
+		ada.JSON(w, http.StatusInternalServerError, Response{
+			Message: "Failed to delete note",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	ada.JSON(w, http.StatusOK, Response{
+		Message: "Note deleted successfully",
+	})
+}
+
 func (s *Server) getNotes(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	notes, err := s.service.GetNotes(ctx)

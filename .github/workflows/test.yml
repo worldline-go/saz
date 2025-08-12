@@ -19,6 +19,11 @@ jobs:
     - uses: actions/setup-go@v4
       with:
         go-version: '1.24' # The Go version to download (if necessary) and use.
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends unixodbc-dev
+        go mod download
     - name: download golangci.yml
       run: |
         [[ ! -f ".golangci.yml" ]] && curl -kfsSL -O https://raw.githubusercontent.com/worldline-go/guide/main/lint/.golangci.yml || true

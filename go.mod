@@ -1,8 +1,6 @@
 module github.com/worldline-go/saz
 
-go 1.24.2
-
-toolchain go1.24.4
+go 1.24
 
 require (
 	github.com/alexbrainman/odbc v0.0.0-20250601004241-49e6b2bc0cf0
@@ -21,7 +19,7 @@ require (
 	github.com/rakunlabs/chu v0.2.5
 	github.com/rakunlabs/into v0.4.1
 	github.com/rakunlabs/logi v0.4.1
-	github.com/rakunlabs/tummy v0.1.1
+	github.com/rakunlabs/tummy v0.1.2
 	github.com/rytsh/mugo v0.8.5
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cast v1.9.2

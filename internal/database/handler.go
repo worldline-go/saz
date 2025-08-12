@@ -160,7 +160,7 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 	defer tx.Rollback()
 
 	if wipe {
-		if _, err := tx.Exec("TRUNCATE TABLE " + table); err != nil {
+		if _, err := tx.ExecContext(ctx, "TRUNCATE TABLE "+table); err != nil {
 			return nil, fmt.Errorf("truncate table %s: %w", table, err)
 		}
 	}

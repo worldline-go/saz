@@ -1,0 +1,109 @@
+version: "2"
+run:
+  tests: false
+
+linters:
+  default: all
+  disable:
+    - depguard
+    - exhaustruct
+    - funlen
+    - gochecknoglobals
+    - gomoddirectives
+    - rowserrcheck
+    - sqlclosecheck
+    - tagliatelle
+    - varnamelen
+    - wastedassign
+    - wsl
+  settings:
+    cyclop:
+      max-complexity: 30
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      exclude-functions:
+        - (github.com/worldline-go/tell/tell.Collector).Shutdown
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - diagnostic
+      disabled-tags:
+        - experimental
+      settings:
+        hugeParam:
+          sizeThreshold: 256
+    godot:
+      exclude:
+        - ^(\s)*(@).*$
+      capital: true
+    godox:
+      keywords:
+        - FIXME
+        - HACK
+    gomodguard:
+      blocked:
+        versions:
+          - github.com/worldline-go/wkafka:
+              version: "< 0.5.6"
+              reason: "Use latest version of wkafka, which is fixed partition revoked on batch processing records miss issue"
+    gosmopolitan:
+      allow-time-local: true
+    govet:
+      disable:
+        - shadow
+        - fieldalignment
+      enable-all: true
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: blank-imports
+          disabled: true
+    tagalign:
+      sort: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - err113
+        text: do not define dynamic errors
+      - linters:
+          - lll
+        source: '`'
+      - path: (.+)\.go$
+        text: could not import C
+    paths:
+      - .*(_mock.go)$
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 5
+severity:
+  default: error
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - .*(_mock.go)$
+      - third_party$
+      - builtin$
+      - examples$

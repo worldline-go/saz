@@ -23,12 +23,11 @@ jobs:
       run: |
         [[ ! -f ".golangci.yml" ]] && curl -kfsSL -O https://raw.githubusercontent.com/worldline-go/guide/main/lint/.golangci.yml || true
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v8
       with:
-        args: --timeout 5m --new-from-rev=HEAD~1 --issues-exit-code=0
+        args: --issues-exit-code 0 --output.checkstyle.path ${{ github.workspace }}/golangci-lint-report.out ./...
     - name: Run tests
       run: |
-        golangci-lint run --out-format checkstyle ./... > golangci-lint-report.out || true
         go test -coverprofile=coverage.out -json ./... > test-report.out
     - name: SonarCloud Scan
       uses: sonarsource/sonarcloud-github-action@master

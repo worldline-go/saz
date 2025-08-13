@@ -26,8 +26,11 @@
     RefreshCwOff,
     Dna,
     DnaOff,
+    BookMarked,
+    BookDashed,
+    Bot,
   } from "@lucide/svelte";
-  import type { cell as cellType } from "@/helper/model";
+  import { encodingTypes, type cell as cellType } from "@/helper/model";
 
   let {
     deleteFunc = $bindable(),
@@ -132,6 +135,14 @@
           <input type="checkbox" bind:checked={cell.result} />
           <div class="swap-on"><Captions /></div>
           <div class="swap-off"><CaptionsOff /></div>
+        </label>
+        <label
+          class="swap hover:bg-yellow-200 hover:cursor-pointer px-2 h-full"
+          title="Enable/Disable template in query"
+        >
+          <input type="checkbox" bind:checked={cell.template.enabled} />
+          <div class="swap-on"><Bot /></div>
+          <div class="swap-off"><BotOff /></div>
         </label>
         <label
           class="swap hover:bg-yellow-200 hover:cursor-pointer px-2 h-full"
@@ -249,6 +260,10 @@
                         enabled: false,
                         value: "",
                       },
+                      encoding: {
+                        enabled: false,
+                        coding: "ISO 8859-1",
+                      },
                     };
                   }
                 }}
@@ -296,6 +311,18 @@
                         </div>
                       </label>
                       <label class="swap hover:bg-yellow-200 h-full">
+                        <input
+                          type="checkbox"
+                          bind:checked={column.encoding.enabled}
+                        />
+                        <div class="swap-on" title="Encoding Disabled">
+                          <BookMarked class="px-1" />
+                        </div>
+                        <div class="swap-off" title="Encoding Enabled">
+                          <BookDashed class="px-1" />
+                        </div>
+                      </label>
+                      <label class="swap hover:bg-yellow-200 h-full">
                         <input type="checkbox" bind:checked={column.nullable} />
                         <div class="swap-on" title="Not Null">
                           <SquareDashed class="px-1" />
@@ -323,6 +350,21 @@
                         bind:value={column.template.value}
                         disabled={!column.template.enabled}
                       />
+                    </div>
+                  {/if}
+                  {#if column.encoding.enabled}
+                    <div
+                      class=" w-full border-b border-b-gray-300 border-l-4 border-l-pink-400 flex justify-between items-center"
+                    >
+                      <span class="px-2 py-1">Encoding:</span>
+                      <select
+                        class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white pl-2 pr-0 w-28 h-7"
+                        bind:value={column.encoding.coding}
+                      >
+                        {#each encodingTypes as coding}
+                          <option value={coding}>{coding}</option>
+                        {/each}
+                      </select>
                     </div>
                   {/if}
                 {/each}

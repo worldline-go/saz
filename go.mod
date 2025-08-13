@@ -31,6 +31,7 @@ require (
 	github.com/worldline-go/tell/trace/tracehttp v0.1.0
 	github.com/worldline-go/test v0.3.7
 	github.com/worldline-go/types v0.5.2
+	golang.org/x/text v0.27.0
 )
 
 require (
@@ -155,7 +156,6 @@ require (
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect

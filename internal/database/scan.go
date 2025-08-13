@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/rytsh/mugo/render"
 	"github.com/shopspring/decimal"
@@ -111,7 +110,7 @@ func Map(columnsIndex map[string]int, mapType service.MapType, values []any) err
 				continue
 			}
 
-			sanitized := strings.ToValidUTF8(*v, "�")
+			sanitized := SanitizeString(*v)
 			values[i] = &sanitized
 
 			continue
@@ -121,7 +120,7 @@ func Map(columnsIndex map[string]int, mapType service.MapType, values []any) err
 			}
 
 			if v.Valid {
-				v.V = strings.ToValidUTF8(v.V, "�")
+				v.V = SanitizeString(v.V)
 				values[i] = v
 
 				continue
@@ -145,7 +144,7 @@ func mapDestination(columnsIndex map[string]int, mapType service.MapType, result
 		if idx, ok := columnsIndex[k]; ok {
 			switch colType.Type {
 			case "string":
-				vStr, err := getAnyString(result[idx], colType.Template)
+				vStr, err := getAnyString(result[idx], colType)
 				if err != nil {
 					return err
 				}
@@ -156,7 +155,7 @@ func mapDestination(columnsIndex map[string]int, mapType service.MapType, result
 					result[idx] = vStr.V
 				}
 			case "number":
-				vNum, err := getAnyNumber(result[idx], colType.Template)
+				vNum, err := getAnyNumber(result[idx], colType)
 				if err != nil {
 					return err
 				}
@@ -173,15 +172,15 @@ func mapDestination(columnsIndex map[string]int, mapType service.MapType, result
 	return nil
 }
 
-func getAnyString(v any, t service.Template) (types.Null[string], error) {
+func getAnyString(v any, t service.ColumnTypeTemplate) (types.Null[string], error) {
 	if v == nil {
 		return types.NewNullWithValid("", false), nil
 	}
 
 	switch val := v.(type) {
 	case string:
-		if t.Enabled {
-			vRendered, err := render.ExecuteWithData(t.Value, val)
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, val)
 			if err != nil {
 				return types.Null[string]{}, err
 			}
@@ -189,17 +188,43 @@ func getAnyString(v any, t service.Template) (types.Null[string], error) {
 		}
 		return types.NewNull(val), nil
 	case types.Null[string]:
-		if t.Enabled {
-			vRendered, err := render.ExecuteWithData(t.Value, val.V)
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, val.V)
 			if err != nil {
 				return types.Null[string]{}, err
 			}
 			return types.NewNullWithValid(string(vRendered), val.Valid), nil
 		}
 		return val, nil
+	case []byte:
+		var v string
+		if t.Encoding.Enabled {
+			var err error
+			switch t.Encoding.Coding {
+			case EncodingISO88591:
+				v, err = ConvertISO88591ToUTF8(val)
+				if err != nil {
+					return types.Null[string]{}, err
+				}
+			default:
+				v = string(val)
+			}
+		} else {
+			v = string(val)
+		}
+
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, v)
+			if err != nil {
+				return types.Null[string]{}, err
+			}
+			return types.NewNull(string(vRendered)), nil
+		}
+
+		return types.NewNull(v), nil
 	default:
-		if t.Enabled {
-			vRendered, err := render.ExecuteWithData(t.Value, cast.ToString(v))
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, cast.ToString(v))
 			if err != nil {
 				return types.Null[string]{}, err
 			}
@@ -209,15 +234,15 @@ func getAnyString(v any, t service.Template) (types.Null[string], error) {
 	}
 }
 
-func getAnyNumber(v any, t service.Template) (types.NullDecimal, error) {
+func getAnyNumber(v any, t service.ColumnTypeTemplate) (types.NullDecimal, error) {
 	if v == nil {
 		return types.NullDecimal{Valid: false}, nil
 	}
 
 	switch val := v.(type) {
 	case types.Decimal:
-		if t.Enabled {
-			vRendered, err := render.ExecuteWithData(t.Value, val.String())
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, val.String())
 			if err != nil {
 				return types.NullDecimal{}, err
 			}
@@ -229,8 +254,8 @@ func getAnyNumber(v any, t service.Template) (types.NullDecimal, error) {
 		}
 		return types.NullDecimal{Decimal: val, Valid: true}, nil
 	case types.NullDecimal:
-		if t.Enabled {
-			vRendered, err := render.ExecuteWithData(t.Value, val.Decimal.String())
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, val.Decimal.String())
 			if err != nil {
 				return types.NullDecimal{}, err
 			}
@@ -242,8 +267,8 @@ func getAnyNumber(v any, t service.Template) (types.NullDecimal, error) {
 		}
 		return val, nil
 	default:
-		if t.Enabled {
-			vRendered, err := render.ExecuteWithData(t.Value, cast.ToString(v))
+		if t.Template.Enabled {
+			vRendered, err := render.ExecuteWithData(t.Template.Value, cast.ToString(v))
 			if err != nil {
 				return types.NullDecimal{}, err
 			}

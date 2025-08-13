@@ -43,6 +43,11 @@ type Cell struct {
 	Collapsed   types.Null[bool]   `json:"collapsed,omitzero"`
 	Enabled     types.Null[bool]   `json:"enabled,omitzero"`
 	Result      types.Null[bool]   `json:"result,omitzero"`
+	Template    Template           `json:"template"`
+}
+
+type Template struct {
+	Enabled bool `json:"enabled"`
 }
 
 type Mode struct {
@@ -72,12 +77,18 @@ type ColumnType struct {
 }
 
 type ColumnTypeTemplate struct {
-	Type     string   `json:"type"`
-	Nullable bool     `json:"nullable"`
-	Template Template `json:"template"`
+	Type     string      `json:"type"`
+	Nullable bool        `json:"nullable"`
+	Template EnableValue `json:"template"`
+	Encoding Encoding    `json:"encoding"`
 }
 
-type Template struct {
+type Encoding struct {
+	Enabled bool   `json:"enabled"`
+	Coding  string `json:"coding"`
+}
+
+type EnableValue struct {
 	Enabled bool   `json:"enabled"`
 	Value   string `json:"value"`
 }

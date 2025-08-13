@@ -3,12 +3,17 @@ export type cell = {
   db_type: string;
   content: string;
   limit: number;
+  template: template;
   mode?: modeTransfer;
   enabled?: boolean;
   result?: boolean;
   description?: string; // Optional field for description
   collapsed?: boolean;
 };
+
+export type template = {
+  enabled: boolean;
+}
 
 export type modeTransfer = {
   enabled: boolean;
@@ -34,11 +39,19 @@ export type map_type = {
   destination?: Record<string, {
     type: "number" | "string";
     nullable: boolean;
-    template: template;
+    template: enabled;
+    encoding: encoding;
   }>;
 }
 
-export type template = {
+export const encodingTypes = ["ISO 8859-1"];
+
+export type encoding = {
+  enabled: boolean;
+  coding: string;
+}
+
+export type enabled = {
   enabled: boolean;
   value: string;
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/rakunlabs/logi"
+	"github.com/rytsh/mugo/render"
 )
 
 type Service struct {
@@ -44,13 +45,23 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 		}
 	}()
 
+	content := cell.Content
+	if cell.Template.Enabled {
+		contentRendered, err := render.Execute(content)
+		if err != nil {
+			return nil, fmt.Errorf("render content: %w", err)
+		}
+
+		content = string(contentRendered)
+	}
+
 	if cell.Mode.V.Enabled {
 		switch cell.Mode.V.Name {
 		case "transfer":
 			if cell.Mode.V.Table == "" {
 				return nil, fmt.Errorf("transfer mode requires a table name; %w", ErrBadRequest)
 			}
-			columns, iterGet, err := s.db.IterGet(ctx, cell.DBType, cell.Content, cell.Mode.V.MapType)
+			columns, iterGet, err := s.db.IterGet(ctx, cell.DBType, content, cell.Mode.V.MapType)
 			if err != nil {
 				return nil, fmt.Errorf("get iterator: %w", err)
 			}
@@ -74,13 +85,13 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 	}
 
 	if cell.Result.V {
-		return s.db.Query(ctx, cell.DBType, cell.Content, cell.Limit)
+		return s.db.Query(ctx, cell.DBType, content, cell.Limit)
 	}
 
-	return s.db.Exec(ctx, cell.DBType, cell.Content)
+	return s.db.Exec(ctx, cell.DBType, content)
 }
 
-func (s *Service) RunNote(ctx context.Context, notePath string) error {
+func (s *Service) RunNote(ctx context.Context, notePath string) (err error) {
 	if notePath == "" {
 		return fmt.Errorf("note path is empty; %w", ErrBadRequest)
 	}
@@ -91,6 +102,15 @@ func (s *Service) RunNote(ctx context.Context, notePath string) error {
 	}
 
 	logNote := slog.Group("note", slog.String("name", note.Name), slog.String("path", note.Path))
+
+	defer func() {
+		if err != nil {
+			logi.Ctx(ctx).Error("failed to run note", logNote, slog.String("error", err.Error()))
+		} else {
+			logi.Ctx(ctx).Info("note executed successfully", logNote)
+		}
+	}()
+
 	logi.Ctx(ctx).Info("starting note execution", logNote)
 
 	for i := range note.Content.Cells {

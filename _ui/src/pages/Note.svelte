@@ -41,6 +41,9 @@
       collapsed: false,
       enabled: true,
       result: false,
+      template: {
+        enabled: false,
+      },
     };
 
     let cellsSnapshot = $state.snapshot(cells) || [];
@@ -89,6 +92,7 @@
         collapsed: cell.collapsed,
         enabled: cell.enabled,
         result: cell.result,
+        template: cell.template,
       });
     });
     const note: notebook = {
@@ -99,7 +103,7 @@
         cells: savedCells,
       },
     };
-    console.log("Saving notebook:", note);
+    // console.log("Saving notebook:", note);
 
     requestNoteSave(note);
   };

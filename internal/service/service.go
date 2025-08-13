@@ -73,7 +73,7 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 				}
 			}()
 
-			result, err := s.db.IterSet(ctx, cell.Mode.V.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, cell.Mode.V.SkipError, cell.Mode.V.MapType, columns, iterGet)
+			result, err := s.db.IterSet(ctx, cell.Mode.V.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, cell.Mode.V.SkipError, cell.Mode.V.MapType, cell.Mode.V.Batch, columns, iterGet)
 			if err != nil {
 				return nil, fmt.Errorf("set iterator: %w", err)
 			}

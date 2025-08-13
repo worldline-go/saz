@@ -20,6 +20,7 @@ export type modeTransfer = {
   name: "transfer";
   db_type: string;
   table: string;
+  batch: number;
   wipe: boolean;
   map_type: map_type;
   skip_error: skip_error;

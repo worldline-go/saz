@@ -81,6 +81,7 @@
             column: {},
             destination: {},
           },
+          batch: 1,
         };
         break;
       default:
@@ -438,6 +439,14 @@
             type="text"
             placeholder="Table Name"
             bind:value={cell.mode.table}
+          />
+          <input
+            class="bg-white border-b border-t border-gray-300 hover:cursor-text hover:bg-white px-2 py-1 w-full"
+            type="number"
+            placeholder="1"
+            min="1"
+            title="Batch Size"
+            bind:value={cell.mode.batch}
           />
           {#if cell.mode.skip_error.enabled}
             <input

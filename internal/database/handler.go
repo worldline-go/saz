@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"iter"
 	"strings"
@@ -162,10 +163,14 @@ func (d *Database) IterGet(ctx context.Context, name, query string, mapType serv
 			_ = !yield(nil, fmt.Errorf("iterate rows: %w", err))
 			return
 		}
+
+		if !yield(nil, nil) {
+			return
+		}
 	}, nil
 }
 
-func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, skipError service.SkipError, mapType service.MapType, columns []string, rows iter.Seq2[[]any, error]) (service.Result, error) {
+func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, skipError service.SkipError, mapType service.MapType, batchCount int, columns []string, rows iter.Seq2[[]any, error]) (service.Result, error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
 		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
@@ -176,7 +181,7 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 	}
 
 	start := time.Now()
-	tx, err := dbConn.DB.BeginTxx(ctx, nil)
+	tx, err := dbConn.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction on database %s: %w", name, err)
 	}
@@ -194,53 +199,79 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 	var savePoint string
 	if skipError.Enabled {
 		savePoint = fmt.Sprintf("savepoint_%s", ulid.Make())
+
+		// if batchCount > 1 {
+		// 	logi.Ctx(ctx).Info("batch size cannot be use with error skip reduced to 1")
+
+		// 	batchCount = 1
+		// }
 	}
 
-	queryBuilderValues := strings.Builder{}
-	if len(columns) > 1 {
-		if dbConn.PlaceHolder == "$" {
-			for i := range len(columns) - 1 {
-				queryBuilderValues.WriteString(fmt.Sprintf("$%d,", i+1))
-			}
-		} else {
-			queryBuilderValues.WriteString(strings.Repeat("?,", len(columns)-1))
+	if batchCount <= 0 {
+		batchCount = 1
+	}
+
+	queryBuilderFunc := QueryBuilder(table, columns, dbConn.PlaceHolder)
+	query := queryBuilderFunc(batchCount)
+
+	var stmt *sql.Stmt
+	if batchCount == 1 && !skipError.Enabled {
+		var err error
+		stmt, err = tx.PrepareContext(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("prepare statement: %w", err)
 		}
-	}
-	if dbConn.PlaceHolder == "$" {
-		queryBuilderValues.WriteString(fmt.Sprintf("$%d", len(columns)))
-	} else {
-		queryBuilderValues.WriteString("?")
+		defer stmt.Close()
 	}
 
-	queryBuilder := strings.Builder{}
+	batchHolder := NewBatch(batchCount)
 
-	queryBuilder.WriteString("INSERT INTO ")
-	queryBuilder.WriteString(table)
-	queryBuilder.WriteString(" (")
-	queryBuilder.WriteString(strings.Join(columns, ","))
-	queryBuilder.WriteString(") VALUES (")
-	queryBuilder.WriteString(queryBuilderValues.String())
-	queryBuilder.WriteString(")")
-
-	query := queryBuilder.String()
-
+	lastTurn := false
 	for row, err := range rows {
 		if err != nil {
 			return nil, fmt.Errorf("iterate rows: %w", err)
 		}
 
 		if len(row) == 0 {
-			continue
+			if batchCount == 1 {
+				continue
+			}
+
+			lastTurn = true
+		}
+
+		if batchCount > 1 {
+			if len(row) != 0 {
+				batchHolder.AddRow(row)
+			}
+
+			if !lastTurn && !batchHolder.IsFull() {
+				continue
+			}
+
+			if size := batchHolder.Size(); size != batchCount {
+				query = queryBuilderFunc(size)
+			}
+
+			row = batchHolder.Rows()
 		}
 
 		if skipError.Enabled {
 			tx.ExecContext(ctx, "SAVEPOINT "+savePoint)
 		}
 
-		if _, err := tx.ExecContext(ctx, query, row...); err != nil {
+		var err error
+		if stmt != nil {
+			_, err = stmt.ExecContext(ctx, row...)
+		} else {
+			_, err = tx.ExecContext(ctx, query, row...)
+		}
+
+		if err != nil {
 			if skipError.Enabled {
 				if strings.Contains(err.Error(), skipError.Message) {
 					tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+savePoint)
+					batchHolder.Reset()
 					continue
 				}
 			}
@@ -252,7 +283,12 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 			tx.ExecContext(ctx, "RELEASE SAVEPOINT "+savePoint)
 		}
 
-		counter++
+		if batchCount == 1 {
+			counter++
+		} else {
+			counter += int64(batchHolder.Size())
+			batchHolder.Reset()
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

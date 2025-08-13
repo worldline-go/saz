@@ -58,6 +58,7 @@ type Mode struct {
 	Wipe      bool      `json:"wipe"`
 	SkipError SkipError `json:"skip_error"`
 	MapType   MapType   `json:"map_type"`
+	Batch     int       `json:"batch"`
 }
 
 type SkipError struct {
@@ -119,5 +120,5 @@ type Database interface {
 	Exec(ctx context.Context, name, query string) (Result, error)
 
 	IterGet(ctx context.Context, name, query string, mapType MapType) ([]string, iter.Seq2[[]any, error], error)
-	IterSet(ctx context.Context, name, table string, wipe bool, skipError SkipError, mapType MapType, columns []string, rows iter.Seq2[[]any, error]) (Result, error)
+	IterSet(ctx context.Context, name, table string, wipe bool, skipError SkipError, mapType MapType, batch int, columns []string, rows iter.Seq2[[]any, error]) (Result, error)
 }

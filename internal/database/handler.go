@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"iter"
-	"reflect"
 	"strings"
 	"time"
 
@@ -29,7 +28,8 @@ func (d *Database) Exec(ctx context.Context, name, query string) (service.Result
 	}
 
 	start := time.Now()
-	result, err := dbConn.ExecContext(ctx, query)
+
+	result, err := dbConn.DB.ExecContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("execute query on database %s: %w", name, err)
 	}
@@ -54,7 +54,7 @@ func (d *Database) Query(ctx context.Context, name, query string, limit int64) (
 
 	start := time.Now()
 	rows := [][]any{}
-	rowsIter, err := dbConn.QueryxContext(ctx, query)
+	rowsIter, err := dbConn.DB.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("run query on database %s: %w", name, err)
 	}
@@ -66,7 +66,7 @@ func (d *Database) Query(ctx context.Context, name, query string, limit int64) (
 	}
 
 	for rowsIter.Next() {
-		values, err := rowsIter.SliceScan()
+		values, err := ScanSlice(len(columns), rowsIter)
 		if err != nil {
 			return nil, fmt.Errorf("scan row: %w", err)
 		}
@@ -96,41 +96,65 @@ func (d *Database) Query(ctx context.Context, name, query string, limit int64) (
 
 // /////////////////////////////////////////////
 
-func (d *Database) IterGet(ctx context.Context, name, query string, mapType service.MapType) (iter.Seq2[map[string]any, error], error) {
+func (d *Database) IterGet(ctx context.Context, name, query string, mapType service.MapType) ([]string, iter.Seq2[[]any, error], error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
-		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
+		return nil, nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
 	}
 
-	rowsIter, err := dbConn.QueryxContext(ctx, query)
+	rowsIter, err := dbConn.DB.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("run query on database %s: %w", name, err)
+		return nil, nil, fmt.Errorf("run query on database %s: %w", name, err)
 	}
 
-	columnTypes, err := rowsIter.ColumnTypes()
+	columns, err := rowsIter.Columns()
 	if err != nil {
-		return nil, fmt.Errorf("get column types: %w", err)
+		return nil, nil, fmt.Errorf("get columns: %w", err)
 	}
 
-	dynamicType := reflect.StructOf(GenerateStruct(columnTypes, mapType))
+	var dynamicSlice []any
+	var columnsIndex map[string]int
 
-	return func(yield func(map[string]any, error) bool) {
+	if mapType.Enabled {
+		columnTypes, err := rowsIter.ColumnTypes()
+		if err != nil {
+			return nil, nil, fmt.Errorf("get column types: %w", err)
+		}
+
+		dynamicSlice = GenerateSlice(columnTypes, mapType)
+
+		columnsIndex = make(map[string]int, len(columns))
+		for i, col := range columns {
+			columnsIndex[col] = i
+		}
+	}
+
+	return columns, func(yield func([]any, error) bool) {
 		defer rowsIter.Close()
 
 		for rowsIter.Next() {
-			record := reflect.New(dynamicType).Interface()
-			if err := rowsIter.StructScan(record); err != nil {
-				_ = !yield(nil, fmt.Errorf("scan row: %w", err))
-				return
+			var sliceRow []any
+			if mapType.Enabled {
+				sliceRow, err = ScanSliceWithValues(len(columns), rowsIter, dynamicSlice)
+				if err != nil {
+					_ = !yield(nil, fmt.Errorf("scan row: %w", err))
+					return
+				}
+
+				if err := Map(columnsIndex, mapType, sliceRow); err != nil {
+					_ = !yield(nil, fmt.Errorf("map struct to map: %w", err))
+					return
+				}
+			} else {
+				var err error
+				sliceRow, err = ScanSlice(len(columns), rowsIter)
+				if err != nil {
+					_ = !yield(nil, fmt.Errorf("scan row: %w", err))
+					return
+				}
 			}
 
-			mapRecord, err := Struct2Map(record, mapType)
-			if err != nil {
-				_ = !yield(nil, fmt.Errorf("map struct to map: %w", err))
-				return
-			}
-
-			if !yield(mapRecord, nil) {
+			if !yield(sliceRow, nil) {
 				return
 			}
 		}
@@ -141,7 +165,7 @@ func (d *Database) IterGet(ctx context.Context, name, query string, mapType serv
 	}, nil
 }
 
-func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, skipError service.SkipError, rows iter.Seq2[map[string]any, error]) (service.Result, error) {
+func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, skipError service.SkipError, mapType service.MapType, columns []string, rows iter.Seq2[[]any, error]) (service.Result, error) {
 	dbConn, ok := d.DB[name]
 	if !ok {
 		return nil, fmt.Errorf("database %s; %w", name, service.ErrNotExists)
@@ -152,7 +176,7 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 	}
 
 	start := time.Now()
-	tx, err := dbConn.BeginTxx(ctx, nil)
+	tx, err := dbConn.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction on database %s: %w", name, err)
 	}
@@ -172,6 +196,34 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 		savePoint = fmt.Sprintf("savepoint_%s", ulid.Make())
 	}
 
+	queryBuilderValues := strings.Builder{}
+	if len(columns) > 1 {
+		if dbConn.PlaceHolder == "$" {
+			for i := range len(columns) - 1 {
+				queryBuilderValues.WriteString(fmt.Sprintf("$%d,", i+1))
+			}
+		} else {
+			queryBuilderValues.WriteString(strings.Repeat("?,", len(columns)-1))
+		}
+	}
+	if dbConn.PlaceHolder == "$" {
+		queryBuilderValues.WriteString(fmt.Sprintf("$%d", len(columns)))
+	} else {
+		queryBuilderValues.WriteString("?")
+	}
+
+	queryBuilder := strings.Builder{}
+
+	queryBuilder.WriteString("INSERT INTO ")
+	queryBuilder.WriteString(table)
+	queryBuilder.WriteString(" (")
+	queryBuilder.WriteString(strings.Join(columns, ","))
+	queryBuilder.WriteString(") VALUES (")
+	queryBuilder.WriteString(queryBuilderValues.String())
+	queryBuilder.WriteString(")")
+
+	query := queryBuilder.String()
+
 	for row, err := range rows {
 		if err != nil {
 			return nil, fmt.Errorf("iterate rows: %w", err)
@@ -181,20 +233,11 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 			continue
 		}
 
-		// row is a map[string]any add that with using sqlx
-		columns := make([]string, 0, len(row))
-		placeholders := make([]string, 0, len(row))
-		for k := range row {
-			columns = append(columns, k)
-			placeholders = append(placeholders, ":"+k)
-		}
-		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(columns, ","), strings.Join(placeholders, ","))
-
 		if skipError.Enabled {
 			tx.ExecContext(ctx, "SAVEPOINT "+savePoint)
 		}
 
-		if _, err := tx.NamedExecContext(ctx, query, row); err != nil {
+		if _, err := tx.ExecContext(ctx, query, row...); err != nil {
 			if skipError.Enabled {
 				if strings.Contains(err.Error(), skipError.Message) {
 					tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+savePoint)

@@ -2,10 +2,10 @@ package database
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 	"reflect"
+	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/rytsh/mugo/render"
 	"github.com/shopspring/decimal"
@@ -14,35 +14,66 @@ import (
 	"github.com/worldline-go/types"
 )
 
-func GenerateStruct(columnTypes []*sql.ColumnType, mapType service.MapType) []reflect.StructField {
-	dynamicFields := make([]reflect.StructField, 0, len(columnTypes))
-	for _, col := range columnTypes {
-		field := reflect.StructField{
-			Name: strings.ToTitle(col.Name()),
-			Type: GetStructType(col, mapType),
-			Tag:  reflect.StructTag(`db:"` + col.Name() + `"`),
-		}
+func ScanSlice(columnsLen int, r *sql.Rows) ([]any, error) {
+	values := make([]any, columnsLen)
+	for i := range values {
+		values[i] = new(any)
+	}
 
-		dynamicFields = append(dynamicFields, field)
+	if err := r.Scan(values...); err != nil {
+		return nil, err
+	}
+
+	for i := range columnsLen {
+		values[i] = *(values[i].(*any))
+	}
+
+	return values, nil
+}
+
+func ScanSliceWithValues(columnsLen int, r *sql.Rows, valueTypes []any) ([]any, error) {
+	if len(valueTypes) != columnsLen {
+		return nil, fmt.Errorf("values length %d does not match columns length %d", len(valueTypes), columnsLen)
+	}
+
+	values := slices.Clone(valueTypes)
+
+	if err := r.Scan(values...); err != nil {
+		return nil, err
+	}
+
+	for i := range values {
+		if _, ok := (values[i].(*any)); ok {
+			values[i] = *(values[i].(*any))
+		}
+	}
+
+	return values, nil
+}
+
+func GenerateSlice(columnTypes []*sql.ColumnType, mapType service.MapType) []any {
+	dynamicFields := make([]any, 0, len(columnTypes))
+	for _, col := range columnTypes {
+		dynamicFields = append(dynamicFields, GetType(col, mapType))
 	}
 
 	return dynamicFields
 }
 
-func GetStructType(col *sql.ColumnType, mapType service.MapType) reflect.Type {
+func GetType(col *sql.ColumnType, mapType service.MapType) any {
 	if mapType.Enabled {
 		if colMapType, ok := mapType.Column[col.Name()]; ok {
 			switch colMapType.Type {
 			case "string":
 				if colMapType.Nullable {
-					return reflect.TypeOf(types.Null[string]{})
+					return new(types.Null[string])
 				}
-				return reflect.TypeOf("")
+				return new(string)
 			case "number":
 				if colMapType.Nullable {
-					return reflect.TypeOf(types.NullDecimal{})
+					return new(types.NullDecimal)
 				}
-				return reflect.TypeOf(types.Decimal{})
+				return new(types.Decimal)
 			}
 		}
 	}
@@ -53,103 +84,93 @@ func GetStructType(col *sql.ColumnType, mapType service.MapType) reflect.Type {
 		reflect.Int8, reflect.Uint8,
 		reflect.Int, reflect.Uint:
 		if nullable, _ := col.Nullable(); nullable {
-			return reflect.TypeOf(types.NullDecimal{})
+			return new(types.NullDecimal)
 		}
-		return reflect.TypeOf(types.Decimal{})
+		return new(types.Decimal)
 	case reflect.String:
 		if nullable, _ := col.Nullable(); nullable {
-			return reflect.TypeOf(types.Null[string]{})
+			return new(types.Null[string])
 		}
-		return reflect.TypeOf("")
+		return new(string)
 	case reflect.Bool:
 		if nullable, _ := col.Nullable(); nullable {
-			return reflect.TypeOf(types.Null[bool]{})
+			return new(types.Null[bool])
 		}
-		return reflect.TypeOf(false)
+		return new(bool)
 	}
 
-	return col.ScanType()
+	return new(any)
 }
 
-func Struct2Map(v any, mapType service.MapType) (map[string]any, error) {
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-
-	if val.Kind() != reflect.Struct {
-		return nil, errors.New("input is not a struct")
-	}
-
-	result := make(map[string]any)
-	for i := range val.NumField() {
-		field := val.Type().Field(i)
-		value := val.Field(i)
-
-		if value.IsValid() && value.CanInterface() {
-			// check if interface is string than sanitize utf8
-			switch v := value.Interface().(type) {
-			case string:
-				result[field.Tag.Get("db")] = sanitizeString(v)
+func Map(columnsIndex map[string]int, mapType service.MapType, values []any) error {
+	for i := range values {
+		// check if interface is string than sanitize utf8
+		switch v := values[i].(type) {
+		case *string:
+			if v == nil {
 				continue
-			case types.Null[string]:
-				if v.Valid {
-					v.V = sanitizeString(v.V)
-					result[field.Tag.Get("db")] = v
-					continue
-				}
 			}
 
-			result[field.Tag.Get("db")] = value.Interface()
+			sanitized := strings.ToValidUTF8(*v, "�")
+			values[i] = &sanitized
+
+			continue
+		case *types.Null[string]:
+			if v == nil {
+				continue
+			}
+
+			if v.Valid {
+				v.V = strings.ToValidUTF8(v.V, "�")
+				values[i] = v
+
+				continue
+			}
 		}
 	}
 
-	result, err := mapDestination(result, mapType)
-	if err != nil {
-		return nil, err
+	if err := mapDestination(columnsIndex, mapType, values); err != nil {
+		return err
 	}
 
-	return result, nil
+	return nil
 }
 
-func mapDestination(result map[string]any, mapType service.MapType) (map[string]any, error) {
+func mapDestination(columnsIndex map[string]int, mapType service.MapType, result []any) error {
 	if !mapType.Enabled {
-		return result, nil
+		return nil
 	}
 
-	mappedResult := make(map[string]any, len(result))
-	for k, v := range result {
-		if colType, ok := mapType.Destination[k]; ok {
+	for k, colType := range mapType.Destination {
+		if idx, ok := columnsIndex[k]; ok {
 			switch colType.Type {
 			case "string":
-				vStr, err := getAnyString(v, colType.Template)
+				vStr, err := getAnyString(result[idx], colType.Template)
 				if err != nil {
-					return nil, err
+					return err
 				}
+
 				if colType.Nullable {
-					mappedResult[k] = vStr
+					result[idx] = vStr
 				} else {
-					mappedResult[k] = vStr.V
+					result[idx] = vStr.V
 				}
 			case "number":
-				vNum, err := getAnyNumber(v, colType.Template)
+				vNum, err := getAnyNumber(result[idx], colType.Template)
 				if err != nil {
-					return nil, err
+					return err
 				}
+
 				if colType.Nullable {
-					mappedResult[k] = vNum
+					result[idx] = vNum
 				} else {
-					mappedResult[k] = vNum.Decimal
+					result[idx] = vNum.Decimal
 				}
-			default:
-				mappedResult[k] = v
 			}
-		} else {
-			mappedResult[k] = v
 		}
 	}
 
-	return mappedResult, nil
+	return nil
 }
 
 func getAnyString(v any, t service.Template) (types.Null[string], error) {
@@ -238,24 +259,4 @@ func getAnyNumber(v any, t service.Template) (types.NullDecimal, error) {
 		}
 		return types.NullDecimal{Decimal: decimalVal, Valid: true}, nil
 	}
-}
-
-func sanitizeString(s string) string {
-	if utf8.ValidString(s) {
-		return s
-	}
-
-	var b strings.Builder
-	for i, r := range s {
-		if r == utf8.RuneError {
-			_, size := utf8.DecodeRuneInString(s[i:])
-			if size == 1 {
-				// skip invalid byte
-				continue
-			}
-		}
-		b.WriteRune(r)
-	}
-
-	return b.String()
 }

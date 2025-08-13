@@ -15,10 +15,17 @@ import (
 	"github.com/worldline-go/tell"
 )
 
+var (
+	version = "v0.0.0"
+	commit  = "-"
+	date    = "-"
+)
+
 func main() {
+	config.ServerVersion = version
 	into.Init(run,
 		into.WithLogger(logi.InitializeLog()),
-		into.WithMsgf("%s [%s]", config.ServerName, config.ServerVersion),
+		into.WithMsgf("%s version:[%s] commit:[%s] date:[%s]", config.ServerName, version, commit, date),
 	)
 }
 

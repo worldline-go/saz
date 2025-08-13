@@ -107,6 +107,6 @@ type Database interface {
 	Query(ctx context.Context, name, query string, limit int64) (Result, error)
 	Exec(ctx context.Context, name, query string) (Result, error)
 
-	IterGet(ctx context.Context, name, query string, mapType MapType) (iter.Seq2[map[string]any, error], error)
-	IterSet(ctx context.Context, name, table string, wipe bool, skipError SkipError, rows iter.Seq2[map[string]any, error]) (Result, error)
+	IterGet(ctx context.Context, name, query string, mapType MapType) ([]string, iter.Seq2[[]any, error], error)
+	IterSet(ctx context.Context, name, table string, wipe bool, skipError SkipError, mapType MapType, columns []string, rows iter.Seq2[[]any, error]) (Result, error)
 }

@@ -17,12 +17,17 @@ import (
 )
 
 type Database struct {
-	DB map[string]*sqlx.DB
+	DB map[string]*DatabaseInfo
+}
+
+type DatabaseInfo struct {
+	DB          *sqlx.DB
+	PlaceHolder string
 }
 
 func (d *Database) Close() {
 	for name, dbConn := range d.DB {
-		if err := dbConn.Close(); err != nil {
+		if err := dbConn.DB.Close(); err != nil {
 			slog.Error("close database connection", "name", name, "error", err)
 		}
 	}
@@ -30,7 +35,7 @@ func (d *Database) Close() {
 
 func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, error) {
 	db := &Database{
-		DB: make(map[string]*sqlx.DB),
+		DB: make(map[string]*DatabaseInfo),
 	}
 
 	for name, dbConfig := range cfg {
@@ -43,8 +48,19 @@ func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, er
 
 		slog.Info("connected to database", "name", name, "type", dbConfig.DBType)
 
-		db.DB[name] = dbConn
+		db.DB[name] = &DatabaseInfo{
+			DB:          dbConn,
+			PlaceHolder: PlaceHolder(dbConfig.DBType),
+		}
 	}
 
 	return db, nil
+}
+
+func PlaceHolder(dbType string) string {
+	if dbType == "pgx" || dbType == "postgres" {
+		return "$"
+	}
+
+	return "?"
 }

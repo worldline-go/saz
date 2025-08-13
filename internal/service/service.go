@@ -25,19 +25,21 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 		return nil, fmt.Errorf("invalid cell; %w", ErrBadRequest)
 	}
 
-	logi.Ctx(ctx).Info("running cell",
-		"db_type", cell.DBType,
-		"description", cell.Description.V,
-		"mode", cell.Mode.V.Name,
+	logCell := slog.Group("cell",
+		slog.String("description", cell.Description.V),
+		slog.String("db_type", cell.DBType),
+		slog.String("mode", cell.Mode.V.Name),
 	)
+	logi.Ctx(ctx).Info("running cell", logCell)
 
 	defer func() {
 		if err != nil {
-			logi.Ctx(ctx).Error("failed to run cell", slog.String("error", err.Error()))
+			logi.Ctx(ctx).Error("failed to run cell", logCell, slog.String("error", err.Error()))
 		} else {
 			logi.Ctx(ctx).Info("cell executed successfully",
+				logCell,
 				slog.Int64("row_affected", result.RowsAffected()),
-				slog.Duration("duration", result.Duration()),
+				slog.String("duration", result.Duration().String()),
 			)
 		}
 	}()
@@ -48,7 +50,7 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 			if cell.Mode.V.Table == "" {
 				return nil, fmt.Errorf("transfer mode requires a table name; %w", ErrBadRequest)
 			}
-			iterGet, err := s.db.IterGet(ctx, cell.DBType, cell.Content, cell.Mode.V.MapType)
+			columns, iterGet, err := s.db.IterGet(ctx, cell.DBType, cell.Content, cell.Mode.V.MapType)
 			if err != nil {
 				return nil, fmt.Errorf("get iterator: %w", err)
 			}
@@ -60,7 +62,7 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 				}
 			}()
 
-			result, err := s.db.IterSet(ctx, cell.Mode.V.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, cell.Mode.V.SkipError, iterGet)
+			result, err := s.db.IterSet(ctx, cell.Mode.V.DBType, cell.Mode.V.Table, cell.Mode.V.Wipe, cell.Mode.V.SkipError, cell.Mode.V.MapType, columns, iterGet)
 			if err != nil {
 				return nil, fmt.Errorf("set iterator: %w", err)
 			}

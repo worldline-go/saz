@@ -1,4 +1,4 @@
-ARG DB_IMAGE=ghcr.io/rytsh/dock/db/multi:debian-12.10-slim
+ARG DB_IMAGE=ghcr.io/rytsh/dock/db/multi:debian-13.0-slim
 
 FROM ${DB_IMAGE}
 
@@ -7,4 +7,4 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 COPY saz /usr/local/bin/saz
 
-ENTRYPOINT ["/usr/local/bin/saz"]
+ENTRYPOINT ["/saz"]

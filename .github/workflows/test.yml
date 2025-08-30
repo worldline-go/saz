@@ -7,22 +7,18 @@ on:
 
 name: Test
 jobs:
-  sonarcloud:
+  test:
     runs-on: ubuntu-latest
+    container: ghcr.io/rytsh/dock/build/go:1.25.0
     steps:
-    - name: get epository name
+    - name: get repository name
       run: echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
     - uses: actions/checkout@v3
       with:
         # Disabling shallow clone is recommended for improving relevancy of reporting
         fetch-depth: 0
-    - uses: actions/setup-go@v4
-      with:
-        go-version: '1.24' # The Go version to download (if necessary) and use.
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends unixodbc-dev
         go mod download
     - name: download golangci.yml
       run: |

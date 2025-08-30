@@ -10,19 +10,12 @@ VERSION := $(or $(IMAGE_TAG),$(shell git describe --tags --first-parent --match 
 .DEFAULT_GOAL := help
 
 .PHONY: build-front
-build-front: ## Build the front-end application
+build-front: ## Build the front-end application (manually)
 	@echo "> Building front-end application"
 	cd _ui && pnpm install && pnpm run build
 	@echo "> Replacing build output"
 	rm -rf internal/server/dist 2> /dev/null
 	mv _ui/dist internal/server/dist
-
-.PHONY: build
-build: CGO_ENABLED ?= 0
-build: GOOS ?= linux
-build: GOARCH ?= amd64
-build: ## Build the binary
-	go build -trimpath -ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(BUILD_COMMIT) -X main.date=$(BUILD_DATE)" -o bin/$(PROJECT) $(MAIN_FILE)
 
 .PHONY: build-releaser
 build-releaser: ## Build the binary with goreleaser
@@ -30,7 +23,7 @@ build-releaser: ## Build the binary with goreleaser
 
 .PHONY: build-container
 build-container: ## Build the container image with test tag
-	docker build -t $(PROJECT):test -f ci/Dockerfile dist/saz_linux_amd64_v1/
+	docker build -t $(PROJECT):test -f ci/Dockerfile .
 
 .PHONY: run
 run: export LOG_LEVEL ?= debug
@@ -45,7 +38,7 @@ build-in: ## Build binary inside of the container
 		-v $(HOME)/go/pkg/mod:/go/pkg/mod \
 		-w /workspace \
 		-u $(shell id -u):$(shell id -g) \
-		ghcr.io/rytsh/dock/build/go:1.24.6 \
+		ghcr.io/rytsh/dock/build/go:1.25.0 \
 		make build-releaser
 
 .PHONY: lint

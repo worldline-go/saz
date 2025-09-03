@@ -249,7 +249,12 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 				continue
 			}
 
-			if size := batchHolder.Size(); size != batchCount {
+			size := batchHolder.Size()
+			if size == 0 {
+				continue
+			}
+
+			if size != batchCount {
 				query = queryBuilderFunc(size)
 			}
 

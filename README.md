@@ -1,6 +1,6 @@
 # Structured Access Zone (saz)
 
-<img align="left" src="saz.png" alt="saz" width="184">
+<img align="right" src="saz.png" alt="saz" width="184">
 
 [![License](https://img.shields.io/github/license/worldline-go/saz?color=red&style=flat-square)](https://raw.githubusercontent.com/worldline-go/saz/main/LICENSE)
 [![Coverage](https://img.shields.io/sonar/coverage/worldline-go_saz?logo=sonarcloud&server=https%3A%2F%2Fsonarcloud.io&style=flat-square)](https://sonarcloud.io/summary/overall?id=worldline-go_saz)

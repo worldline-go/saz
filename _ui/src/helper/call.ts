@@ -7,6 +7,10 @@ export const requestRun = (data: cell) => {
   return axios.post("./api/v1/run", data);
 };
 
+export const requestRunTemplate = (content: string, data: any) => {
+  return axios.post("./api/v1/render", { content, data });
+}
+
 export const requestRunNotebook = (path: string) => {
   return axios.post(`./api/v1/run/${path}`);
 };

@@ -10,12 +10,12 @@ func QueryBuilder(table string, columns []string, placeHolder string) func(batch
 		queryBuilderValues := strings.Builder{}
 		for batchIndex := range batchCount {
 			queryBuilderValues.WriteString("(")
-			if placeHolder == "$" {
+			if placeHolder == "$" || placeHolder == ":" {
 				for i := range (len(columns)) - 1 {
-					queryBuilderValues.WriteString(fmt.Sprintf("$%d,", (batchIndex*len(columns))+i+1))
+					queryBuilderValues.WriteString(fmt.Sprintf("%s%d,", placeHolder, (batchIndex*len(columns))+i+1))
 				}
 
-				queryBuilderValues.WriteString(fmt.Sprintf("$%d", (batchIndex+1)*len(columns)))
+				queryBuilderValues.WriteString(fmt.Sprintf("%s%d", placeHolder, (batchIndex+1)*len(columns)))
 			} else {
 				queryBuilderValues.WriteString(strings.Repeat("?,", (len(columns))-1))
 				queryBuilderValues.WriteString("?")

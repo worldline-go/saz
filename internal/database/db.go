@@ -10,6 +10,7 @@ import (
 	"github.com/worldline-go/saz/internal/config"
 
 	_ "github.com/alexbrainman/odbc"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
 	_ "github.com/mattn/go-sqlite3"
 	_ "github.com/microsoft/go-mssqldb"
@@ -17,10 +18,10 @@ import (
 )
 
 type Database struct {
-	DB map[string]*DatabaseInfo
+	DB map[string]*Info
 }
 
-type DatabaseInfo struct {
+type Info struct {
 	DB          *sqlx.DB
 	PlaceHolder string
 }
@@ -35,7 +36,7 @@ func (d *Database) Close() {
 
 func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, error) {
 	db := &Database{
-		DB: make(map[string]*DatabaseInfo),
+		DB: make(map[string]*Info),
 	}
 
 	for name, dbConfig := range cfg {
@@ -48,7 +49,7 @@ func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, er
 
 		slog.Info("connected to database", "name", name, "type", dbConfig.DBType)
 
-		db.DB[name] = &DatabaseInfo{
+		db.DB[name] = &Info{
 			DB:          dbConn,
 			PlaceHolder: PlaceHolder(dbConfig.DBType),
 		}
@@ -58,9 +59,12 @@ func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, er
 }
 
 func PlaceHolder(dbType string) string {
-	if dbType == "pgx" || dbType == "postgres" {
+	switch dbType {
+	case "pgx", "postgres":
 		return "$"
+	case "godror":
+		return ":"
+	default:
+		return "?"
 	}
-
-	return "?"
 }

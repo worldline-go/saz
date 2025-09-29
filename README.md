@@ -8,7 +8,7 @@
 
 Helps to transfer data from one database to another database and play queries🎶.
 
-__-__ Postgres, Oracle, SQLite3, MSSQL supported  
+__-__ Postgres(`pgx`), Oracle(`godror`), SQLite3(`sqlite3`), MSSQL(`sqlserver`), MySQL(`mysql`) supported  
 __-__ UI for query writing  
 __-__ Flexible data mapping  
 __-__ Fast transfer with batch processing  

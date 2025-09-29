@@ -8,16 +8,15 @@ import (
 	"net/http"
 
 	"github.com/rakunlabs/ada"
+	mfolder "github.com/rakunlabs/ada/handler/folder"
 	mcors "github.com/rakunlabs/ada/middleware/cors"
-	mfolder "github.com/rakunlabs/ada/middleware/folder"
 	mlog "github.com/rakunlabs/ada/middleware/log"
 	mrecover "github.com/rakunlabs/ada/middleware/recover"
 	mrequestid "github.com/rakunlabs/ada/middleware/requestid"
+	mtelemetry "github.com/rakunlabs/ada/middleware/telemetry"
 
 	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/service"
-	"github.com/worldline-go/tell/metric/metrichttp"
-	"github.com/worldline-go/tell/trace/tracehttp"
 )
 
 type Server struct {
@@ -39,8 +38,7 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 		mcors.Middleware(),
 		mrequestid.Middleware(),
 		mlog.Middleware(),
-		metrichttp.Middleware(),
-		tracehttp.Middleware(),
+		mtelemetry.Middleware(),
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if privateToken != "" {
@@ -50,9 +48,11 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 						return
 					}
 
-					ada.JSON(w, http.StatusForbidden, Response{
-						Message: "Forbidden Request",
-					})
+					ada.NewContext(w, r).
+						SetStatus(http.StatusForbidden).
+						SendJSON(Response{
+							Message: "Forbidden Request",
+						})
 				}
 
 				next.ServeHTTP(w, r)
@@ -69,13 +69,19 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 	// ////////////////////////////////////////////
 
 	baseGroup := mux.Group(cfg.BasePath)
-	baseGroup.POST("/api/v1/run", s.run)
-	baseGroup.POST("/api/v1/run/{note}", s.runNote)
-	baseGroup.GET("/api/v1/info", s.info)
-	baseGroup.GET("/api/v1/notes", s.getNotes)
-	baseGroup.GET("/api/v1/notes/{id}", s.getNote)
-	baseGroup.PUT("/api/v1/notes/{id}", s.putNote)
-	baseGroup.DELETE("/api/v1/notes/{id}", s.deleteNote)
+	baseGroup.POST("/api/v1/run", baseGroup.Wrap(s.run))
+	baseGroup.POST("/api/v1/run/{note}", baseGroup.Wrap(s.runNote))
+	baseGroup.GET("/api/v1/run/{note}", baseGroup.Wrap(s.runNote))
+
+	baseGroup.POST("/api/v1/run/{note}/{cell}", baseGroup.Wrap(s.runNoteCell))
+	baseGroup.GET("/api/v1/run/{note}/{cell}", baseGroup.Wrap(s.runNoteCell))
+
+	baseGroup.GET("/api/v1/info", baseGroup.Wrap(s.info))
+	baseGroup.GET("/api/v1/notes", baseGroup.Wrap(s.getNotes))
+	baseGroup.GET("/api/v1/notes/{id}", baseGroup.Wrap(s.getNote))
+	baseGroup.PUT("/api/v1/notes/{id}", baseGroup.Wrap(s.putNote))
+	baseGroup.DELETE("/api/v1/notes/{id}", baseGroup.Wrap(s.deleteNote))
+	baseGroup.POST("/api/v1/render", baseGroup.Wrap(s.render))
 
 	// ////////////////////////////////////////////
 
@@ -84,7 +90,7 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 		return nil, err
 	}
 
-	folderM := mfolder.Folder{
+	folderM, err := mfolder.New(&mfolder.Config{
 		BasePath:       cfg.BasePath,
 		Index:          true,
 		StripIndexName: true,
@@ -96,15 +102,14 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 				CacheControl: "no-store",
 			},
 		},
-	}
-
-	folderM.SetFs(http.FS(f))
-	folderHandler, err := folderM.Handler()
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	baseGroup.HandleFunc("/*", folderHandler)
+	folderM.SetFs(http.FS(f))
+
+	baseGroup.Handle("/*", folderM)
 
 	// ////////////////////////////////////////////
 

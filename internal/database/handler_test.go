@@ -23,7 +23,7 @@ func (s *DatabaseSuite) SetupSuite() {
 	s.container.ExecuteFolder(s.T(), "testdata")
 
 	s.Database = Database{
-		DB: map[string]*DatabaseInfo{
+		DB: map[string]*Info{
 			"postgres": {
 				DB:          s.container.Sqlx(),
 				PlaceHolder: PlaceHolder(s.container.Sqlx().DriverName()),

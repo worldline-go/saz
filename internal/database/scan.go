@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/rytsh/mugo/render"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cast"
+	"github.com/worldline-go/saz/internal/render"
 	"github.com/worldline-go/saz/internal/service"
 	"github.com/worldline-go/types"
 )

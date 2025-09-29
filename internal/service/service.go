@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/rakunlabs/logi"
-	"github.com/rytsh/mugo/render"
+	"github.com/worldline-go/saz/internal/render"
 )
 
 type Service struct {
@@ -129,6 +129,54 @@ func (s *Service) RunNote(ctx context.Context, notePath string) (err error) {
 	}
 
 	return nil
+}
+
+func (s *Service) RunNoteCell(ctx context.Context, notePath string, cell int) (result Result, err error) {
+	if notePath == "" {
+		return nil, fmt.Errorf("note path is empty; %w", ErrBadRequest)
+	}
+	if cell < 1 {
+		return nil, fmt.Errorf("cell number is invalid; %w", ErrBadRequest)
+	}
+
+	note, err := s.store.GetWithPath(ctx, notePath)
+	if err != nil {
+		return nil, fmt.Errorf("get note by path %s: %w", notePath, err)
+	}
+
+	if cell > len(note.Content.Cells) {
+		return nil, fmt.Errorf("cell number %d is out of range; %w", cell, ErrBadRequest)
+	}
+
+	logNote := slog.Group("note", slog.String("name", note.Name), slog.String("path", note.Path))
+	logCell := slog.Group("cell", slog.String("description", note.Content.Cells[cell-1].Description.V), slog.Int("number", cell))
+	ctxCell := logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
+
+	defer func() {
+		if err != nil {
+			logi.Ctx(ctxCell).Error("failed to run cell", logNote, logCell, slog.String("error", err.Error()))
+		} else {
+			logi.Ctx(ctxCell).Info("cell executed successfully", logNote, logCell)
+		}
+	}()
+
+	logi.Ctx(ctxCell).Info("starting cell execution", logNote, logCell)
+
+	result, err = s.Run(ctxCell, &note.Content.Cells[cell-1])
+	if err != nil {
+		return nil, err
+	}
+
+	if note.Content.Cells[cell-1].Result.V {
+		logi.Ctx(ctxCell).Info("cell result",
+			slog.Int64("rows_affected", result.RowsAffected()),
+			slog.Int("columns", len(result.Columns())),
+			slog.Int("rows", len(result.Rows())),
+			slog.String("duration", result.Duration().String()),
+		)
+	}
+
+	return result, nil
 }
 
 func (s *Service) DatabaseList() []string {

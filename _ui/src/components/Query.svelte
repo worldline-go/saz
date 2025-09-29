@@ -1,6 +1,6 @@
 <script lang="ts">
   import Editor from "@/components/Editor.svelte";
-  import { requestRun } from "@/helper/call";
+  import { requestRun, requestRunTemplate } from "@/helper/call";
   import { storeInfo, storeOutput } from "@/store/store";
   import { addToast } from "@/store/toast";
   import {
@@ -29,6 +29,9 @@
     BookMarked,
     BookDashed,
     Bot,
+    ZapOff,
+    Zap,
+    ListVideo,
   } from "@lucide/svelte";
   import { encodingTypes, type cell as cellType } from "@/helper/model";
 
@@ -36,6 +39,21 @@
     deleteFunc = $bindable(),
     cell = $bindable<cellType>(),
   }: { deleteFunc: () => void; cell: cellType } = $props();
+
+  let preview = $state(false);
+  let previewResult = $state("");
+
+  let clearPreview = () => {
+    previewResult = "";
+  };
+
+  $effect(() => {
+    if (!preview) {
+      clearPreview();
+    } else {
+      runTemplate();
+    }
+  });
 
   const runQuery = () => {
     addToast("Running cell...", "info");
@@ -57,6 +75,17 @@
           storeOutput.set(null);
         }
         addToast("Error running query: " + error.message, "alert");
+      });
+  };
+
+  const runTemplate = () => {
+    requestRunTemplate(cell.content, {})
+      .then((response) => {
+        previewResult = response.data?.data || "";
+      })
+      .catch((error) => {
+        previewResult = error?.response?.data?.error;
+        addToast(error?.response?.data?.error, "alert");
       });
   };
 
@@ -118,6 +147,25 @@
         />
       </div>
       <div class="flex items-center gap-1">
+        {#if cell.template?.enabled}
+          <label
+            class="swap hover:bg-yellow-200 hover:cursor-pointer px-2 h-full"
+            title="Enable/Disable Preview Mode"
+          >
+            <input type="checkbox" bind:checked={preview} />
+            <div class="swap-on"><Zap /></div>
+            <div class="swap-off"><ZapOff /></div>
+          </label>
+        {/if}
+        {#if preview}
+          <button
+            class="px-2 h-full text-black hover:bg-green-400 hover:cursor-pointer"
+            onclick={runTemplate}
+            title="Render Template"
+          >
+            <ListVideo />
+          </button>
+        {/if}
         <input
           class={[
             "h-full border-none rounded-none bg-gray-100 hover:cursor-text px-2 w-20",
@@ -154,7 +202,7 @@
           <div class="swap-off"><WifiOff /></div>
         </label>
         <button
-          class="text-gray-600 px-2 hover:cursor-pointer hover:bg-red-500 hover:text-white h-full"
+          class="text-black px-2 hover:cursor-pointer hover:bg-red-500 hover:text-white h-full"
           onclick={runQuery}
           title="Run Query"
         >
@@ -164,8 +212,21 @@
     </div>
     <div class="flex justify-between">
       <div class="overflow-y-auto w-full">
-        <Editor bind:value={cell.content} collapse={cell.collapsed} />
+        <Editor
+          bind:value={cell.content}
+          collapse={cell.collapsed}
+          class="bg-white"
+        />
       </div>
+      {#if preview}
+        <div class="min-w-56 w-full">
+          <Editor
+            bind:value={previewResult}
+            readonly={true}
+            class="bg-yellow-50"
+          />
+        </div>
+      {/if}
       {#if cell.mode?.name === "transfer"}
         {#if cell.mode?.map_type.enabled}
           <div class="flex flex-col items-start border-l border-gray-300">

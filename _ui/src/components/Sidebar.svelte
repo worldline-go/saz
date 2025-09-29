@@ -48,7 +48,12 @@
             inactiveClassName: "bg-white text-black",
           }}
         >
-          <span class="block px-2">{note.name}</span>
+          <span
+            class="block px-2 overflow-ellipsis overflow-x-hidden whitespace-nowrap"
+            title={note.name}
+          >
+            {note.name}
+          </span>
         </a>
       </div>
     {/each}

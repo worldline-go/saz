@@ -5,41 +5,42 @@ go 1.25
 require (
 	github.com/alexbrainman/odbc v0.0.0-20250601004241-49e6b2bc0cf0
 	github.com/doug-martin/goqu/v9 v9.19.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/godror/godror v0.49.1
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/mattn/go-sqlite3 v1.14.30
-	github.com/microsoft/go-mssqldb v1.9.2
+	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/microsoft/go-mssqldb v1.9.3
 	github.com/oklog/ulid/v2 v2.1.1
-	github.com/rakunlabs/ada v0.1.8
-	github.com/rakunlabs/ada/middleware/cors v0.1.0
-	github.com/rakunlabs/ada/middleware/folder v0.1.0
-	github.com/rakunlabs/ada/middleware/log v0.1.0
-	github.com/rakunlabs/ada/middleware/recover v0.1.0
-	github.com/rakunlabs/ada/middleware/requestid v0.1.0
+	github.com/rakunlabs/ada v0.2.4
+	github.com/rakunlabs/ada/handler/folder v0.1.1
+	github.com/rakunlabs/ada/middleware/cors v0.1.3
+	github.com/rakunlabs/ada/middleware/log v0.1.7
+	github.com/rakunlabs/ada/middleware/recover v0.1.3
+	github.com/rakunlabs/ada/middleware/requestid v0.1.3
+	github.com/rakunlabs/ada/middleware/telemetry v0.1.0
 	github.com/rakunlabs/chu v0.2.5
-	github.com/rakunlabs/into v0.4.1
-	github.com/rakunlabs/logi v0.4.1
+	github.com/rakunlabs/into v0.4.2
+	github.com/rakunlabs/logi v0.4.3
 	github.com/rakunlabs/tummy v0.1.2
-	github.com/rytsh/mugo v0.8.5
+	github.com/rytsh/mugo v0.9.1
 	github.com/shopspring/decimal v1.4.0
-	github.com/spf13/cast v1.9.2
+	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.10.0
 	github.com/worldline-go/conn v0.1.5
 	github.com/worldline-go/igmigrator/v2 v2.4.0
 	github.com/worldline-go/tell v0.6.1
-	github.com/worldline-go/tell/metric/metrichttp v0.6.3
-	github.com/worldline-go/tell/trace/tracehttp v0.1.0
 	github.com/worldline-go/test v0.3.7
 	github.com/worldline-go/types v0.5.2
-	golang.org/x/text v0.27.0
+	golang.org/x/text v0.28.0
 )
 
 require (
-	dario.cat/mergo v1.0.1 // indirect
+	dario.cat/mergo v1.0.2 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.0 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/VictoriaMetrics/easyproto v0.1.4 // indirect
@@ -72,7 +73,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20250731182530-5d03d1963446 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
 	github.com/hashicorp/consul/api v1.32.0 // indirect
@@ -82,7 +83,7 @@ require (
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.6 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
@@ -127,14 +128,14 @@ require (
 	github.com/rytsh/liz/shutdown v0.1.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/afero v1.14.0 // indirect
-	github.com/tdewolff/minify/v2 v2.23.10 // indirect
-	github.com/tdewolff/parse/v2 v2.8.1 // indirect
+	github.com/spf13/afero v1.15.0 // indirect
+	github.com/tdewolff/minify/v2 v2.24.3 // indirect
+	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/testcontainers/testcontainers-go v0.38.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twmb/tlscfg v1.2.1 // indirect
-	github.com/worldline-go/klient v0.9.11 // indirect
+	github.com/worldline-go/klient v0.9.12 // indirect
 	github.com/worldline-go/logz v0.5.4 // indirect
 	github.com/worldline-go/struct2 v1.3.1 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
@@ -155,7 +156,7 @@ require (
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect

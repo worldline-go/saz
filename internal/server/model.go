@@ -17,3 +17,8 @@ type Info struct {
 	Databases []string `json:"databases"`
 	Version   string   `json:"version"`
 }
+
+type RenderRequest struct {
+	Content string `json:"content"`
+	Data    any    `json:"data"`
+}

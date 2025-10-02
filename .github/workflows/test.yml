@@ -9,7 +9,7 @@ name: Test
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: ghcr.io/rytsh/dock/build/go:1.25.0
+    container: ghcr.io/rytsh/dock/build/go:1.25.1
     steps:
     - name: get repository name
       run: echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV

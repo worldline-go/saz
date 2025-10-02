@@ -53,6 +53,8 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 						SendJSON(Response{
 							Message: "Forbidden Request",
 						})
+
+					return
 				}
 
 				next.ServeHTTP(w, r)

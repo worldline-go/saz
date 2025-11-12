@@ -57,7 +57,7 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 					return
 				}
 
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(Context(r)))
 			})
 		},
 	)

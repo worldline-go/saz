@@ -34,11 +34,11 @@ export type skip_error = {
 export type map_type = {
   enabled: boolean;
   column?: Record<string, {
-    type: "number" | "string";
+    type: "number" | "string" | "date";
     nullable: boolean;
   }>;
   destination?: Record<string, {
-    type: "number" | "string";
+    type: "number" | "string" | "date";
     nullable: boolean;
     template: enabled;
     encoding: encoding;

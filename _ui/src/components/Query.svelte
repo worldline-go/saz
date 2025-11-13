@@ -279,6 +279,7 @@
                       >
                         <option value="string">String</option>
                         <option value="number">Number</option>
+                        <option value="date">Date</option>
                       </select>
                       <label class="swap hover:bg-yellow-200 h-full">
                         <input type="checkbox" bind:checked={column.nullable} />
@@ -359,6 +360,7 @@
                       >
                         <option value="string">String</option>
                         <option value="number">Number</option>
+                        <option value="date">Date</option>
                       </select>
                       <label class="swap hover:bg-yellow-200 h-full">
                         <input

@@ -9,7 +9,7 @@
     <div>
       <span>Connected Databases</span>
       <div class="mt-2">
-        {#each $storeInfo?.databases || [] as db}
+        {#each ($storeInfo?.databases || []).sort( (a, b) => a.localeCompare(b), ) as db}
           <div
             class="px-1 bg-yellow-50 border border-black hover:shadow shadow-black"
           >

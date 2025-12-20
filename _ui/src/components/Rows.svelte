@@ -5,9 +5,22 @@
     limit = $bindable(),
     offset = $bindable(),
   }: { output: QueryOutput | null; limit: number; offset: number } = $props();
+
+  function handleCellClick(event: MouseEvent, value: string) {
+    if (event.ctrlKey || event.metaKey) {
+      navigator.clipboard.writeText(value);
+      // Optional: Add visual feedback
+      const target = event.currentTarget as HTMLElement;
+      const originalBg = target.style.backgroundColor;
+      target.style.backgroundColor = "#90EE90";
+      setTimeout(() => {
+        target.style.backgroundColor = originalBg;
+      }, 200);
+    }
+  }
 </script>
 
-<div>
+<div class="overflow-x-auto max-w-full">
   {#if output}
     <table>
       <thead>
@@ -24,7 +37,11 @@
             <tr>
               <td>{index + offset + 1}</td>
               {#each row as value}
-                <td title={value}>{value}</td>
+                <td
+                  title={value}
+                  onclick={(e) => handleCellClick(e, value)}
+                  style="cursor: pointer;">{value}</td
+                >
               {/each}
             </tr>
           {/each}
@@ -45,7 +62,7 @@
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
-    max-width: 50px;
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -61,8 +78,17 @@
   }
   th {
     background-color: #f2f2f2;
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
   tr:nth-child(even) {
     background-color: #f9f9f9;
+  }
+  tr:hover {
+    background-color: #fff085;
+  }
+  td:hover {
+    background-color: #ffffcc;
   }
 </style>

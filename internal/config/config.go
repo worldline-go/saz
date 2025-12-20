@@ -9,8 +9,8 @@ import (
 	"github.com/rakunlabs/logi"
 	"github.com/worldline-go/tell"
 
-	_ "github.com/rakunlabs/chu/loader/loaderconsul"
-	_ "github.com/rakunlabs/chu/loader/loadervault"
+	_ "github.com/rakunlabs/chu/loader/external/loaderconsul"
+	_ "github.com/rakunlabs/chu/loader/external/loadervault"
 )
 
 var (

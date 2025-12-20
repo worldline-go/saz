@@ -2,19 +2,19 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
 
 	_ "github.com/alexbrainman/odbc"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 	_ "github.com/microsoft/go-mssqldb"
-	_ "github.com/worldline-go/conn/database/postgres"
 )
 
 type Database struct {
@@ -22,7 +22,7 @@ type Database struct {
 }
 
 type Info struct {
-	DB          *sqlx.DB
+	DB          *sql.DB
 	PlaceHolder string
 }
 

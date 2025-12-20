@@ -60,7 +60,7 @@
     addToast("Running notebook...", "info");
     storeOutput.set(null);
     requestRunNotebook(path)
-      .then((response) => {
+      .then(() => {
         storeOutput.set(null);
         addToast("Notebook run successfully", "info");
       })

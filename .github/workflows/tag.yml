@@ -12,7 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/rytsh/dock/build/go:1.25.1
+      image: ghcr.io/rytsh/dock/build/go:1.25.5
       options: --privileged
     services:
       docker:

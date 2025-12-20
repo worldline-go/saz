@@ -2,18 +2,18 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/rakunlabs/tummy"
 	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/service"
 	"github.com/worldline-go/types"
 
-	_ "github.com/worldline-go/conn/database/postgres"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
@@ -21,7 +21,7 @@ import (
 )
 
 type Postgres struct {
-	db   *sqlx.DB
+	db   *sql.DB
 	goqu *goqu.Database
 
 	tableNotes exp.IdentifierExpression
@@ -58,7 +58,7 @@ func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
 	return conn(cfg, dbConn)
 }
 
-func conn(cfg *config.StorePostgres, dbConn *sqlx.DB) (*Postgres, error) {
+func conn(cfg *config.StorePostgres, dbConn *sql.DB) (*Postgres, error) {
 	dbGoqu := goqu.New("postgres", dbConn)
 
 	return &Postgres{

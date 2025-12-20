@@ -25,8 +25,8 @@ func (s *DatabaseSuite) SetupSuite() {
 	s.Database = Database{
 		DB: map[string]*Info{
 			"postgres": {
-				DB:          s.container.Sqlx(),
-				PlaceHolder: PlaceHolder(s.container.Sqlx().DriverName()),
+				DB:          s.container.Sql(),
+				PlaceHolder: PlaceHolder("pgx"),
 			},
 		},
 	}
@@ -41,9 +41,9 @@ func (s *DatabaseSuite) TearDownSuite() {
 }
 
 func (s *DatabaseSuite) TearDownTest() {
-	_, err := s.container.Sqlx().ExecContext(s.T().Context(), "TRUNCATE TABLE events")
+	_, err := s.container.Sql().ExecContext(s.T().Context(), "TRUNCATE TABLE events")
 	require.NoError(s.T(), err)
-	_, err = s.container.Sqlx().ExecContext(s.T().Context(), "TRUNCATE TABLE events_copy")
+	_, err = s.container.Sql().ExecContext(s.T().Context(), "TRUNCATE TABLE events_copy")
 	require.NoError(s.T(), err)
 }
 
@@ -62,7 +62,7 @@ func (s *DatabaseSuite) TestCopyEventsEqualCounts() {
 		)
 	}
 
-	_, err := s.container.Sqlx().ExecContext(s.T().Context(), batchQuery, args...)
+	_, err := s.container.Sql().ExecContext(s.T().Context(), batchQuery, args...)
 	require.NoError(s.T(), err)
 
 	columns, rows, err := s.Database.IterGet(s.T().Context(), "postgres", "select * from events", service.MapType{})
@@ -90,7 +90,7 @@ func (s *DatabaseSuite) TestCopyEventsDiffCounts() {
 		)
 	}
 
-	_, err := s.container.Sqlx().ExecContext(s.T().Context(), batchQuery, args...)
+	_, err := s.container.Sql().ExecContext(s.T().Context(), batchQuery, args...)
 	require.NoError(s.T(), err)
 
 	columns, rows, err := s.Database.IterGet(s.T().Context(), "postgres", "select * from events", service.MapType{})

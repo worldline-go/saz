@@ -35,7 +35,7 @@ func (s *PostgresSuite) TearDownSuite() {
 }
 
 func (s *PostgresSuite) Test_Save() {
-	postgres, err := conn(&config.StorePostgres{}, s.container.Sqlx())
+	postgres, err := conn(&config.StorePostgres{}, s.container.Sql())
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), postgres)
 

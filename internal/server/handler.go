@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/rakunlabs/ada"
@@ -14,10 +13,17 @@ import (
 	"github.com/worldline-go/saz/internal/service"
 )
 
+type CellWithValues struct {
+	service.Cell
+
+	Cells  map[string]*service.Cell `json:"cells"`
+	Values map[string]any           `json:"values"`
+}
+
 func (s *Server) run(c *ada.Context) error {
 	ctx := context.WithoutCancel(c.Request.Context())
 
-	var cell service.Cell
+	var cell CellWithValues
 	if err := json.NewDecoder(c.Request.Body).Decode(&cell); err != nil {
 		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
 			Message: "Invalid request format",
@@ -25,7 +31,23 @@ func (s *Server) run(c *ada.Context) error {
 		})
 	}
 
-	result, err := s.service.Run(ctx, &cell)
+	cellResult := make(map[string]any)
+	for key, depCell := range cell.Cells {
+		depResult, err := s.service.Run(ctx, depCell, cell.Values, nil)
+		if err != nil {
+			return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+				Message: "Failed to execute dependency cell; " + depCell.Description.V,
+				Error:   err.Error(),
+			})
+		}
+
+		depRows := service.DataToMap(depResult.Columns(), depResult.Rows())
+		cellResult[key] = depRows
+	}
+
+	cell.Values["cells"] = cellResult
+
+	result, err := s.service.Run(ctx, &cell.Cell, cell.Values, nil)
 	if err != nil {
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
@@ -60,7 +82,15 @@ func (s *Server) runNote(c *ada.Context) error {
 
 	noteName := c.Request.PathValue("note")
 
-	if err := s.service.RunNote(ctx, noteName); err != nil {
+	values, err := getValuesFromRequest(c.Request)
+	if err != nil {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Invalid request format",
+			Error:   err.Error(),
+		})
+	}
+
+	if err := s.service.RunNote(ctx, noteName, values); err != nil {
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
 				Message: "Resource not found",
@@ -90,17 +120,17 @@ func (s *Server) runNoteCell(c *ada.Context) error {
 	ctx := context.WithoutCancel(c.Request.Context())
 
 	noteName := c.Request.PathValue("note")
-	cellID := c.Request.PathValue("cell")
+	cellPath := c.Request.PathValue("cell")
 
-	cellNumber, err := strconv.Atoi(cellID)
-	if err != nil || cellNumber < 1 {
+	values, err := getValuesFromRequest(c.Request)
+	if err != nil {
 		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
-			Message: "Invalid cell number",
-			Error:   "Cell number must be a positive integer",
+			Message: "Invalid request format",
+			Error:   err.Error(),
 		})
 	}
 
-	result, err := s.service.RunNoteCell(ctx, noteName, cellNumber)
+	result, err := s.service.RunNoteCell(ctx, noteName, cellPath, values)
 	if err != nil {
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{

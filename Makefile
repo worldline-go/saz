@@ -38,7 +38,7 @@ build-in: ## Build binary inside of the container
 		-v $(HOME)/go/pkg/mod:/go/pkg/mod \
 		-w /workspace \
 		-u $(shell id -u):$(shell id -g) \
-		ghcr.io/rytsh/dock/build/go:1.25.1 \
+		ghcr.io/rytsh/dock/build/go:1.25.5 \
 		make build-releaser
 
 .PHONY: lint

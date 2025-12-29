@@ -5,11 +5,23 @@ export type cell = {
   limit: number;
   template: template;
   mode?: modeTransfer;
+  dependency?: dependency;
   enabled?: boolean;
   result?: boolean;
   description?: string; // Optional field for description
   collapsed?: boolean;
+  path?: string; // Optional field for path
 };
+
+export type cellPlus = cell & {
+  cells: Record<string, cell>;
+  values: Record<string, any>;
+};
+
+export type dependency = {
+  enabled: boolean;
+  names: string[];
+}
 
 export type template = {
   enabled: boolean;

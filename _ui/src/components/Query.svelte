@@ -32,16 +32,19 @@
     ZapOff,
     Zap,
     ListVideo,
+    ArrowRightLeft,
   } from "@lucide/svelte";
   import { encodingTypes, type cell as cellType } from "@/helper/model";
 
   let {
     deleteFunc = $bindable(),
     cell = $bindable<cellType>(),
-  }: { deleteFunc: () => void; cell: cellType } = $props();
+    cells = $bindable<cellType[]>(),
+  }: { deleteFunc: () => void; cell: cellType; cells: cellType[] } = $props();
 
   let preview = $state(false);
   let previewResult = $state("");
+  let dropdownRef: HTMLDetailsElement | undefined = $state();
 
   let clearPreview = () => {
     previewResult = "";
@@ -58,7 +61,21 @@
   const runQuery = () => {
     addToast("Running cell...", "info");
     storeOutput.set(null);
-    requestRun(cell)
+    let dependencyCells: Record<string, cellType> = {};
+    if (cell.dependency?.enabled) {
+      cell.dependency.names.forEach((name) => {
+        const depCell = cells.find((c) => c.path === name);
+        if (depCell) {
+          dependencyCells[name] = depCell;
+        }
+      });
+    }
+
+    requestRun({
+      ...cell,
+      cells: dependencyCells,
+      values: {},
+    })
       .then((response) => {
         storeOutput.set(response.data);
         addToast("Cell run successfully", "info");
@@ -90,7 +107,6 @@
   };
 
   let fullScreen = $state(false);
-  let dropdownRef = $state<HTMLDetailsElement | null>(null);
 
   const setMode = (m: "transfer" | null) => {
     switch (m) {
@@ -131,7 +147,7 @@
     <div class="flex justify-between border-b border-gray-300">
       <div class="flex items-center w-full">
         <select
-          class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white pl-2 pr-0 w-28 h-7"
+          class="border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white h-7"
           bind:value={cell.db_type}
         >
           {#each $storeInfo?.databases ?? [] as database}
@@ -144,6 +160,12 @@
           type="text"
           placeholder="Describe your query"
           bind:value={cell.description}
+        />
+        <input
+          class="input h-full border-t-0 border-b-0 border-gray-300 rounded-none bg-gray-100 hover:cursor-text hover:bg-white focus:bg-white px-2"
+          type="text"
+          placeholder="Path name"
+          bind:value={cell.path}
         />
       </div>
       <div class="flex items-center gap-1">
@@ -227,6 +249,51 @@
           />
         </div>
       {/if}
+      {#if cell.dependency?.enabled}
+        <div class="flex flex-col items-center border-l border-gray-300">
+          <span
+            class="w-48 border-b border-gray-300 flex items-center justify-between leading-[normal] bg-blue-100"
+          >
+            <span class="px-2">Dependency</span>
+          </span>
+          <div class="w-full border-l-4 border-purple-300">
+            {#each cell.dependency.names as name, index}
+              <div
+                class="flex items-center justify-between border-b border-gray-300 w-full"
+              >
+                <input
+                  class="px-2 hover:bg-white h-full w-full"
+                  value={name}
+                  placeholder="Cell Path"
+                  onchange={(e) => {
+                    const newName = e.currentTarget.value.trim();
+                    if (newName) {
+                      cell.dependency!.names[index] = newName;
+                    }
+                  }}
+                />
+                <button
+                  class="h-full hover:cursor-pointer hover:bg-red-500 hover:text-white"
+                  onclick={() => {
+                    cell.dependency!.names.splice(index, 1);
+                  }}
+                >
+                  <Trash class="px-1" />
+                </button>
+              </div>
+            {/each}
+            <button
+              class="w-full hover:bg-yellow-200 hover:cursor-pointer"
+              title="Add new dependency"
+              onclick={() => {
+                cell.dependency!.names.push("");
+              }}
+            >
+              <Plus class="px-1" />
+            </button>
+          </div>
+        </div>
+      {/if}
       {#if cell.mode?.name === "transfer"}
         {#if cell.mode?.map_type.enabled}
           <div class="flex flex-col items-start border-l border-gray-300">
@@ -274,7 +341,7 @@
                     />
                     <div class="flex items-center">
                       <select
-                        class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                        class="bg-none border-none rounded-none hover:cursor-pointer hover:bg-white h-7"
                         bind:value={column.type}
                       >
                         <option value="string">String</option>
@@ -355,7 +422,7 @@
                     />
                     <div class="flex items-center">
                       <select
-                        class="appearance-none bg-none border-none rounded-none hover:cursor-pointer hover:bg-white pl-1 pr-0 h-7"
+                        class="bg-none border-none rounded-none hover:cursor-pointer hover:bg-white h-7"
                         bind:value={column.type}
                       >
                         <option value="string">String</option>
@@ -422,7 +489,7 @@
                     >
                       <span class="px-2 py-1">Encoding:</span>
                       <select
-                        class="select border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white pl-2 pr-0 w-28 h-7"
+                        class="border-none rounded-none bg-gray-100 hover:cursor-pointer hover:bg-white h-7"
                         bind:value={column.encoding.coding}
                       >
                         {#each encodingTypes as coding}
@@ -490,7 +557,7 @@
             </div>
           </span>
           <select
-            class="select border-none rounded-none hover:cursor-pointer hover:bg-white pl-2 pr-0 h-7"
+            class="border-none rounded-none hover:cursor-pointer hover:bg-white w-full h-7"
             bind:value={cell.mode.db_type}
           >
             {#each $storeInfo?.databases ?? [] as database}
@@ -535,8 +602,8 @@
     </button>
 
     <details
-      bind:this={dropdownRef}
       class="dropdown dropdown-bottom dropdown-end marker:content-['']"
+      bind:this={dropdownRef}
     >
       <summary
         class="p-1 text-white hover:bg-gray-300 hover:cursor-pointer"
@@ -547,26 +614,36 @@
       <ul class="dropdown-content bg-base-100 z-1 shadow-sm w-32">
         <li>
           <button
+            class:hover:bg-red-500={cell.mode?.enabled}
             class="w-full p-1 text-black hover:bg-blue-500 hover:text-white hover:cursor-pointer flex text-sm items-center"
             onclick={() => {
-              setMode(null);
-              dropdownRef?.removeAttribute("open");
-            }}
-          >
-            <BotOff class="p-1" />
-            <span class="ml-1">Disable Mode</span>
-          </button>
-        </li>
-        <li>
-          <button
-            class="w-full p-1 text-black hover:bg-blue-500 hover:text-white hover:cursor-pointer flex text-sm items-center"
-            onclick={() => {
-              setMode("transfer");
+              if (cell.mode?.enabled) {
+                setMode(null);
+              } else {
+                setMode("transfer");
+              }
               dropdownRef?.removeAttribute("open");
             }}
           >
             <TrainTrack class="p-1" />
             <span class="ml-1">Transfer Mode</span>
+          </button>
+        </li>
+        <li>
+          <button
+            class:hover:bg-red-500={cell.dependency?.enabled}
+            class="w-full p-1 text-black hover:bg-blue-500 hover:text-white hover:cursor-pointer flex text-sm items-center"
+            onclick={() => {
+              if (cell.dependency?.enabled) {
+                cell.dependency.enabled = false;
+              } else {
+                cell.dependency = { enabled: true, names: [] };
+              }
+              dropdownRef?.removeAttribute("open");
+            }}
+          >
+            <ArrowRightLeft class="p-1" />
+            <span class="ml-1">Dependency</span>
           </button>
         </li>
         <li>

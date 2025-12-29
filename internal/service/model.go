@@ -34,16 +34,23 @@ type Content struct {
 }
 
 type Cell struct {
-	ID          string             `json:"id"`
-	DBType      string             `json:"db_type"`
-	Content     string             `json:"content"`
-	Limit       int64              `json:"limit"`
-	Mode        types.Null[Mode]   `json:"mode,omitzero"`
-	Description types.Null[string] `json:"description,omitzero"`
-	Collapsed   types.Null[bool]   `json:"collapsed,omitzero"`
-	Enabled     types.Null[bool]   `json:"enabled,omitzero"`
-	Result      types.Null[bool]   `json:"result,omitzero"`
-	Template    Template           `json:"template"`
+	ID          string                 `json:"id"`
+	DBType      string                 `json:"db_type"`
+	Content     string                 `json:"content"`
+	Limit       int64                  `json:"limit"`
+	Mode        types.Null[Mode]       `json:"mode,omitzero"`
+	Description types.Null[string]     `json:"description,omitzero"`
+	Collapsed   types.Null[bool]       `json:"collapsed,omitzero"`
+	Enabled     types.Null[bool]       `json:"enabled,omitzero"`
+	Result      types.Null[bool]       `json:"result,omitzero"`
+	Template    Template               `json:"template"`
+	Path        types.Null[string]     `json:"path,omitzero"`
+	Dependency  types.Null[Dependency] `json:"dependency,omitzero"`
+}
+
+type Dependency struct {
+	Enabled bool     `json:"enabled"`
+	Names   []string `json:"names"`
 }
 
 type Template struct {

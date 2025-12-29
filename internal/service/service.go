@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/rakunlabs/logi"
 	"github.com/worldline-go/saz/internal/render"
@@ -21,7 +22,7 @@ func New(db Database, store Storer) *Service {
 	}
 }
 
-func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error) {
+func (s *Service) Run(ctx context.Context, cell *Cell, values map[string]any, dependency map[string]struct{}) (result Result, err error) {
 	if cell == nil || cell.DBType == "" || cell.Content == "" {
 		return nil, fmt.Errorf("invalid cell; %w", ErrBadRequest)
 	}
@@ -47,7 +48,7 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 
 	content := cell.Content
 	if cell.Template.Enabled {
-		contentRendered, err := render.Execute(content)
+		contentRendered, err := render.ExecuteWithData(content, values)
 		if err != nil {
 			return nil, fmt.Errorf("render content: %w", err)
 		}
@@ -85,13 +86,35 @@ func (s *Service) Run(ctx context.Context, cell *Cell) (result Result, err error
 	}
 
 	if cell.Result.V {
-		return s.db.Query(ctx, cell.DBType, content, cell.Limit)
+		result, err := s.db.Query(ctx, cell.DBType, content, cell.Limit)
+		if err != nil {
+			return nil, err
+		}
+
+		if cell.Path.V != "" && len(dependency) > 0 {
+			if _, ok := dependency[cell.Path.V]; ok {
+				if cells, exists := values["cells"]; exists {
+					cellsMap, ok := cells.(map[string]any)
+					if !ok {
+						return nil, fmt.Errorf("invalid cells dependency format; %w", ErrBadRequest)
+					}
+					cellsMap[cell.Path.V] = DataToMap(result.Columns(), result.Rows())
+					values["cells"] = cellsMap
+				} else {
+					values["cells"] = map[string]any{
+						cell.Path.V: DataToMap(result.Columns(), result.Rows()),
+					}
+				}
+			}
+		}
+
+		return result, nil
 	}
 
 	return s.db.Exec(ctx, cell.DBType, content)
 }
 
-func (s *Service) RunNote(ctx context.Context, notePath string) (err error) {
+func (s *Service) RunNote(ctx context.Context, notePath string, values map[string]any) (err error) {
 	if notePath == "" {
 		return fmt.Errorf("note path is empty; %w", ErrBadRequest)
 	}
@@ -99,6 +122,16 @@ func (s *Service) RunNote(ctx context.Context, notePath string) (err error) {
 	note, err := s.store.GetWithPath(ctx, notePath)
 	if err != nil {
 		return fmt.Errorf("get note by path %s: %w", notePath, err)
+	}
+
+	// get all dependencies
+	dependency := make(map[string]struct{})
+	for i := range note.Content.Cells {
+		if note.Content.Cells[i].Dependency.V.Enabled {
+			for _, name := range note.Content.Cells[i].Dependency.V.Names {
+				dependency[name] = struct{}{}
+			}
+		}
 	}
 
 	logNote := slog.Group("note", slog.String("name", note.Name), slog.String("path", note.Path))
@@ -121,22 +154,25 @@ func (s *Service) RunNote(ctx context.Context, notePath string) (err error) {
 			continue
 		}
 
-		note.Content.Cells[i].Result.V = false
-		_, err := s.Run(ctxCell, &note.Content.Cells[i])
+		if _, ok := dependency[note.Content.Cells[i].Path.V]; !ok {
+			note.Content.Cells[i].Result.V = false
+		}
+
+		_, err := s.Run(ctxCell, &note.Content.Cells[i], values, dependency)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s; %w", note.Content.Cells[i].Description.V, err)
 		}
 	}
 
 	return nil
 }
 
-func (s *Service) RunNoteCell(ctx context.Context, notePath string, cell int) (result Result, err error) {
+func (s *Service) RunNoteCell(ctx context.Context, notePath string, cellPath string, values map[string]any) (result Result, err error) {
 	if notePath == "" {
 		return nil, fmt.Errorf("note path is empty; %w", ErrBadRequest)
 	}
-	if cell < 1 {
-		return nil, fmt.Errorf("cell number is invalid; %w", ErrBadRequest)
+	if cellPath == "" {
+		return nil, fmt.Errorf("cell is invalid; %w", ErrBadRequest)
 	}
 
 	note, err := s.store.GetWithPath(ctx, notePath)
@@ -144,12 +180,29 @@ func (s *Service) RunNoteCell(ctx context.Context, notePath string, cell int) (r
 		return nil, fmt.Errorf("get note by path %s: %w", notePath, err)
 	}
 
-	if cell > len(note.Content.Cells) {
-		return nil, fmt.Errorf("cell number %d is out of range; %w", cell, ErrBadRequest)
+	var cellNode *Cell
+	for i := range note.Content.Cells {
+		if note.Content.Cells[i].Path.V == cellPath {
+			cellNode = &note.Content.Cells[i]
+			break
+		}
+	}
+
+	if cellNode == nil {
+		cellNumber, err := strconv.Atoi(cellPath)
+		if err != nil || cellNumber < 1 {
+			return nil, fmt.Errorf("invalid cell number; %w", ErrBadRequest)
+		}
+
+		cellNode = &note.Content.Cells[cellNumber-1]
+	}
+
+	if cellNode == nil {
+		return nil, fmt.Errorf("cell %s not found in note %s; %w", cellPath, notePath, ErrNotExists)
 	}
 
 	logNote := slog.Group("note", slog.String("name", note.Name), slog.String("path", note.Path))
-	logCell := slog.Group("cell", slog.String("description", note.Content.Cells[cell-1].Description.V), slog.Int("number", cell))
+	logCell := slog.Group("cell", slog.String("description", cellNode.Description.V), slog.String("path", cellPath))
 	ctxCell := logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
 
 	defer func() {
@@ -162,12 +215,37 @@ func (s *Service) RunNoteCell(ctx context.Context, notePath string, cell int) (r
 
 	logi.Ctx(ctxCell).Info("starting cell execution", logNote, logCell)
 
-	result, err = s.Run(ctxCell, &note.Content.Cells[cell-1])
+	dependency := make(map[string]struct{})
+	if cellNode.Dependency.V.Enabled {
+		for _, name := range cellNode.Dependency.V.Names {
+			dependency[name] = struct{}{}
+		}
+	}
+
+	for name := range dependency {
+		var depCell *Cell
+		for i := range note.Content.Cells {
+			if note.Content.Cells[i].Path.V == name {
+				depCell = &note.Content.Cells[i]
+				break
+			}
+		}
+
+		if depCell == nil {
+			return nil, fmt.Errorf("dependency cell %s not found in note %s; %w", name, notePath, ErrNotExists)
+		}
+
+		if _, err := s.Run(ctxCell, depCell, values, dependency); err != nil {
+			return nil, fmt.Errorf("execute dependency cell %s: %w", name, err)
+		}
+	}
+
+	result, err = s.Run(ctxCell, cellNode, values, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if note.Content.Cells[cell-1].Result.V {
+	if cellNode.Result.V {
 		logi.Ctx(ctxCell).Info("cell result",
 			slog.Int64("rows_affected", result.RowsAffected()),
 			slog.Int("columns", len(result.Columns())),

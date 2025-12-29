@@ -64,7 +64,7 @@
     <div class="px-2 flex items-center">
       <span class="text-sm font-semibold">Query Output</span>
       <select
-        class="select ml-2 mr-1 border-none rounded-none bg-gray-300 hover:cursor-pointer hover:bg-gray-100 w-28 h-6"
+        class="ml-2 mr-1 border-none rounded-none bg-gray-300 hover:cursor-pointer hover:bg-gray-100 w-28 h-6"
         bind:value={downloadType}
       >
         {#each downloadTypes as type}

@@ -93,6 +93,8 @@
         enabled: cell.enabled,
         result: cell.result,
         template: cell.template,
+        path: cell.path,
+        dependency: cell.dependency,
       });
     });
     const note: notebook = {
@@ -231,6 +233,7 @@
               </div>
             </div>
             <Query
+              bind:cells
               bind:cell={cells[index]}
               deleteFunc={() => removeCell(cell.id)}
             />

@@ -1,9 +1,9 @@
 import { storeInfo, storeNoteIds } from "@/store/store";
 import axios from "axios";
-import type { info, notebook, idName, cell } from "./model";
+import type { info, notebook, idName, cellPlus } from "./model";
 import { addToast } from "@/store/toast";
 
-export const requestRun = (data: cell) => {
+export const requestRun = (data: cellPlus) => {
   return axios.post("./api/v1/run", data);
 };
 

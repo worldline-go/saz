@@ -6,6 +6,7 @@ import (
 	"iter"
 	"time"
 
+	"github.com/rakunlabs/query"
 	"github.com/worldline-go/types"
 )
 
@@ -103,12 +104,36 @@ type EnableValue struct {
 
 // /////////////////////////////////////////////
 
+type Process struct {
+	ID        string             `json:"id"`
+	Status    string             `json:"status"`
+	Info      ProcessInfo        `json:"info"`
+	User      types.Null[string] `json:"user,omitzero"`
+	CreatedAt types.Time         `json:"created_at"`
+	UpdatedAt types.Time         `json:"updated_at"`
+}
+
+type ProcessInfo struct {
+	Note         string `json:"note,omitempty"`
+	Query        string `json:"query,omitempty"`
+	Description  string `json:"description,omitempty"`
+	RowsAffected int64  `json:"rows_affected,omitempty"`
+	Error        string `json:"error,omitempty"`
+	Duration     string `json:"duration,omitempty"`
+}
+
+// /////////////////////////////////////////////
+
 type Storer interface {
 	Get(ctx context.Context, id string) (*Note, error)
 	GetWithPath(ctx context.Context, path string) (*Note, error)
 	GetNotes(ctx context.Context) ([]IDName, error)
 	Save(ctx context.Context, note *Note) error
 	Delete(ctx context.Context, id string) error
+
+	GetProcess(ctx context.Context, q *query.Query) ([]Process, error)
+	SaveProcess(ctx context.Context, process *Process) error
+	DeleteProcess(ctx context.Context, q *query.Query) error
 }
 
 // /////////////////////////////////////////////

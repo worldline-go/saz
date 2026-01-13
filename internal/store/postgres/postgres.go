@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/rakunlabs/query"
+	"github.com/rakunlabs/query/adapter/adaptergoqu"
 	"github.com/rakunlabs/tummy"
 	"github.com/worldline-go/conn/database"
 	"github.com/worldline-go/saz/internal/config"
@@ -24,8 +26,8 @@ type Postgres struct {
 	db   *sql.DB
 	goqu *goqu.Database
 
-	tableNotes exp.IdentifierExpression
-	tableCron  exp.IdentifierExpression
+	tableNotes   exp.IdentifierExpression
+	tableProcess exp.IdentifierExpression
 }
 
 func New(ctx context.Context, cfg *config.StorePostgres) (*Postgres, error) {
@@ -62,10 +64,10 @@ func conn(cfg *config.StorePostgres, dbConn *sql.DB) (*Postgres, error) {
 	dbGoqu := goqu.New("postgres", dbConn)
 
 	return &Postgres{
-		db:         dbConn,
-		goqu:       dbGoqu,
-		tableNotes: goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "notes"),
-		tableCron:  goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "cron"),
+		db:           dbConn,
+		goqu:         dbGoqu,
+		tableNotes:   goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "notes"),
+		tableProcess: goqu.S(cfg.DBSchema).Table(cfg.TablePrefix + "process"),
 	}, nil
 }
 
@@ -189,6 +191,60 @@ func (s *Postgres) Delete(ctx context.Context, id string) error {
 
 	if rowsAffected == 0 {
 		return fmt.Errorf("note with ID %s not found; %w", id, service.ErrNotExists)
+	}
+
+	return nil
+}
+
+// ////////////////////////////////////////
+
+func (s *Postgres) GetProcess(ctx context.Context, q *query.Query) ([]service.Process, error) {
+	var processes []Process
+
+	if err := adaptergoqu.Select(q, s.goqu.From(s.tableProcess)).ScanStructsContext(ctx, &processes); err != nil {
+		return nil, fmt.Errorf("get processes: %w", err)
+	}
+
+	svcProcesses := make([]service.Process, len(processes))
+	for i, p := range processes {
+		svcProcesses[i] = service.Process{
+			ID:        p.ID,
+			Status:    p.Status,
+			Info:      p.Info.V,
+			User:      p.User,
+			CreatedAt: p.CreatedAt,
+			UpdatedAt: p.UpdatedAt,
+		}
+	}
+
+	return svcProcesses, nil
+}
+
+func (s *Postgres) SaveProcess(ctx context.Context, process *service.Process) error {
+	now := tummy.Now()
+
+	dbProcess := Process{
+		ID:        process.ID,
+		Status:    process.Status,
+		Info:      types.NewJSON(process.Info),
+		User:      types.NewNull(service.UserContext(ctx)),
+		CreatedAt: types.NewTime(now),
+		UpdatedAt: types.NewTime(now),
+	}
+
+	// insert or update the process with goqu
+	_, err := s.goqu.Insert(s.tableProcess).Rows(dbProcess).OnConflict(goqu.DoUpdate("id", dbProcess)).Executor().ExecContext(ctx)
+	if err != nil {
+		return fmt.Errorf("exec upsert process: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Postgres) DeleteProcess(ctx context.Context, q *query.Query) error {
+	_, err := s.goqu.Delete(s.tableProcess).Where(adaptergoqu.Expression(q)...).Executor().ExecContext(ctx)
+	if err != nil {
+		return fmt.Errorf("delete process: %w", err)
 	}
 
 	return nil

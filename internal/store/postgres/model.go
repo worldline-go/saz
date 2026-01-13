@@ -19,3 +19,12 @@ type NoteIDName struct {
 	ID   string `db:"id"`
 	Name string `db:"name"`
 }
+
+type Process struct {
+	ID        string                          `db:"id"         goqu:"skipupdate"`
+	Status    string                          `db:"status"`
+	Info      types.JSON[service.ProcessInfo] `db:"info"`
+	User      types.Null[string]              `db:"user"       goqu:"skipupdate"`
+	CreatedAt types.Time                      `db:"created_at" goqu:"skipupdate"`
+	UpdatedAt types.Time                      `db:"updated_at"`
+}

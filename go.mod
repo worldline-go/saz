@@ -23,6 +23,7 @@ require (
 	github.com/rakunlabs/chu/loader/external/loadervault v0.0.0-20251219144315-f960bd3981a8
 	github.com/rakunlabs/into v0.4.2
 	github.com/rakunlabs/logi v0.4.5
+	github.com/rakunlabs/query v0.3.3
 	github.com/rakunlabs/tummy v0.1.2
 	github.com/rytsh/mugo v0.9.1
 	github.com/shopspring/decimal v1.4.0

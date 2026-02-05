@@ -209,7 +209,7 @@ func (s *Postgres) GetProcess(ctx context.Context, q *query.Query) ([]service.Pr
 	for i, p := range processes {
 		svcProcesses[i] = service.Process{
 			ID:        p.ID,
-			Status:    p.Status,
+			Status:    service.ProcessStatus(p.Status),
 			Info:      p.Info.V,
 			User:      p.User,
 			CreatedAt: p.CreatedAt,
@@ -225,7 +225,7 @@ func (s *Postgres) SaveProcess(ctx context.Context, process *service.Process) er
 
 	dbProcess := Process{
 		ID:        process.ID,
-		Status:    process.Status,
+		Status:    string(process.Status),
 		Info:      types.NewJSON(process.Info),
 		User:      types.NewNull(service.UserContext(ctx)),
 		CreatedAt: types.NewTime(now),

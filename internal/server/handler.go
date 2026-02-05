@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rakunlabs/ada"
+	"github.com/rakunlabs/query"
 	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/render"
 	"github.com/worldline-go/saz/internal/service"
@@ -294,3 +295,99 @@ func (s *Server) render(c *ada.Context) error {
 		Data: string(data),
 	})
 }
+
+// //////////////////////////////////////////
+
+func (s *Server) getProcess(c *ada.Context) error {
+	q, err := query.Parse(c.Request.URL.RawQuery)
+	if err != nil {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Invalid query parameters",
+			Error:   err.Error(),
+		})
+	}
+
+	processes, err := s.service.GetProcess(c.Request.Context(), q)
+	if err != nil {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Failed to retrieve processes",
+			Error:   err.Error(),
+		})
+	}
+
+	return c.SetStatus(http.StatusOK).SendJSON(Response{
+		Data: processes,
+	})
+}
+
+func (s *Server) getProcessID(c *ada.Context) error {
+	pid := c.Request.PathValue("pid")
+	if pid == "" {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Process ID is required",
+		})
+	}
+
+	process, err := s.service.GetProcessID(c.Request.Context(), pid)
+	if err != nil {
+		if errors.Is(err, service.ErrNotExists) {
+			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
+				Message: "Process not found",
+				Error:   err.Error(),
+			})
+		}
+
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to retrieve process",
+			Error:   err.Error(),
+		})
+	}
+
+	return c.SetStatus(http.StatusOK).SendJSON(Response{
+		Data: process,
+	})
+}
+
+func (s *Server) actionProcessID(c *ada.Context) error {
+	pid := c.Request.PathValue("pid")
+	if pid == "" {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Process ID is required",
+		})
+	}
+
+	var action service.ProcessActionRequest
+	if err := json.NewDecoder(c.Request.Body).Decode(&action); err != nil {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Invalid request format",
+			Error:   err.Error(),
+		})
+	}
+
+	if err := s.service.ActionProcessID(c.Request.Context(), pid, action); err != nil {
+		if errors.Is(err, service.ErrNotExists) {
+			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
+				Message: "Process not found",
+				Error:   err.Error(),
+			})
+		}
+
+		if errors.Is(err, service.ErrBadRequest) {
+			return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+				Message: "Invalid action",
+				Error:   err.Error(),
+			})
+		}
+
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to perform action on process",
+			Error:   err.Error(),
+		})
+	}
+
+	return c.SetStatus(http.StatusOK).SendJSON(Response{
+		Message: "Action performed successfully",
+	})
+}
+
+// //////////////////////////////////////////

@@ -106,12 +106,21 @@ type EnableValue struct {
 
 type Process struct {
 	ID        string             `json:"id"`
-	Status    string             `json:"status"`
+	Status    ProcessStatus      `json:"status"`
 	Info      ProcessInfo        `json:"info"`
 	User      types.Null[string] `json:"user,omitzero"`
 	CreatedAt types.Time         `json:"created_at"`
 	UpdatedAt types.Time         `json:"updated_at"`
 }
+
+type ProcessStatus string
+
+const (
+	ProcessStatusRunning    ProcessStatus = "running"
+	ProcessStatusCompleted  ProcessStatus = "completed"
+	ProcessStatusFailed     ProcessStatus = "failed"
+	ProcessStatusTerminated ProcessStatus = "terminated"
+)
 
 type ProcessInfo struct {
 	Note         string `json:"note,omitempty"`

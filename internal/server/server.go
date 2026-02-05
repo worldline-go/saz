@@ -85,6 +85,10 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 	baseGroup.DELETE("/api/v1/notes/{id}", baseGroup.Wrap(s.deleteNote))
 	baseGroup.POST("/api/v1/render", baseGroup.Wrap(s.render))
 
+	baseGroup.GET("/api/v1/process", baseGroup.Wrap(s.getProcess))
+	baseGroup.GET("/api/v1/process/{pid}", baseGroup.Wrap(s.getProcessID))
+	baseGroup.POST("/api/v1/process/{pid}", baseGroup.Wrap(s.actionProcessID))
+
 	// ////////////////////////////////////////////
 
 	f, err := fs.Sub(uiFS, "dist")

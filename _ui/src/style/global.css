@@ -1,9 +1,42 @@
 /* stylelint-disable import-notation, at-rule-no-deprecated */
 @import 'tailwindcss';
 
-@plugin 'daisyui';
 
 html,
 body {
   @apply h-full w-full;
+}
+
+/* Swap toggle — replaces DaisyUI swap component */
+.swap {
+  display: inline-flex;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+.swap > input {
+  display: none;
+}
+.swap > input:checked ~ .swap-on {
+  display: block;
+}
+.swap > input:checked ~ .swap-off {
+  display: none;
+}
+.swap > input:not(:checked) ~ .swap-on {
+  display: none;
+}
+.swap > input:not(:checked) ~ .swap-off {
+  display: block;
+}
+
+/* CodeMirror editor — ensure it fills its container */
+.codemirror-wrapper {
+  width: 100%;
+}
+.codemirror-wrapper .cm-editor {
+  width: 100%;
+}
+.codemirror-wrapper .cm-editor .cm-content {
+  min-height: 1.75rem;
 }

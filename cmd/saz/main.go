@@ -56,6 +56,9 @@ func run(ctx context.Context) error {
 
 	svc := service.New(db, st)
 
+	// Mark any stale running processes as failed on startup
+	svc.CleanupStaleProcesses(ctx)
+
 	srv, err := server.New(ctx, cfg.Server, svc)
 	if err != nil {
 		return fmt.Errorf("init server; %w", err)

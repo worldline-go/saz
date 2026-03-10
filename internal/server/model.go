@@ -18,6 +18,11 @@ type Info struct {
 	Version   string   `json:"version"`
 }
 
+type ResponseBackground struct {
+	PID     string `json:"pid"`
+	Message string `json:"message"`
+}
+
 type RenderRequest struct {
 	Content string `json:"content"`
 	Data    any    `json:"data"`

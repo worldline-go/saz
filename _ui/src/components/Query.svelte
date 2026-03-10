@@ -1,6 +1,7 @@
 <script lang="ts">
   import Editor from "@/components/Editor.svelte";
-  import { requestRun, requestRunTemplate } from "@/helper/call";
+  import { requestRun, requestRunTemplate, requestRunBackground } from "@/helper/call";
+  import { confirmDangerousQuery } from "@/helper/sql";
   import { storeInfo, storeOutput } from "@/store/store";
   import { addToast } from "@/store/toast";
   import {
@@ -10,6 +11,7 @@
     TrainTrack,
     BotOff,
     Play,
+    ChevronDown,
     Wifi,
     WifiOff,
     Captions,
@@ -45,6 +47,22 @@
   let preview = $state(false);
   let previewResult = $state("");
   let dropdownRef: HTMLDetailsElement | undefined = $state();
+  let runDropdownOpen = $state(false);
+  let runDropdownRef: HTMLDivElement | undefined = $state();
+
+  // Close run dropdown when clicking outside
+  const handleClickOutside = (e: MouseEvent) => {
+    if (runDropdownRef && !runDropdownRef.contains(e.target as Node)) {
+      runDropdownOpen = false;
+    }
+  };
+
+  $effect(() => {
+    if (runDropdownOpen) {
+      document.addEventListener("click", handleClickOutside, true);
+      return () => document.removeEventListener("click", handleClickOutside, true);
+    }
+  });
 
   let clearPreview = () => {
     previewResult = "";
@@ -59,6 +77,8 @@
   });
 
   const runQuery = () => {
+    if (!confirmDangerousQuery(cell.content)) return;
+
     addToast("Running cell...", "info");
     storeOutput.set(null);
     let dependencyCells: Record<string, cellType> = {};
@@ -92,6 +112,33 @@
           storeOutput.set(null);
         }
         addToast("Error running query: " + error.message, "alert");
+      });
+  };
+
+  const runQueryBackground = () => {
+    if (!confirmDangerousQuery(cell.content)) return;
+
+    let dependencyCells: Record<string, cellType> = {};
+    if (cell.dependency?.enabled) {
+      cell.dependency.names.forEach((name) => {
+        const depCell = cells.find((c) => c.path === name);
+        if (depCell) {
+          dependencyCells[name] = depCell;
+        }
+      });
+    }
+
+    requestRunBackground({
+      ...cell,
+      cells: dependencyCells,
+      values: {},
+    })
+      .then((response) => {
+        const pid = response.data?.pid || "";
+        addToast("Query running in background" + (pid ? ` (${pid})` : ""), "info");
+      })
+      .catch((error) => {
+        addToast("Error starting background query: " + (error.response?.data?.error || error.message), "alert");
       });
   };
 
@@ -154,21 +201,21 @@
             <option value={database}>{database}</option>
           {/each}
         </select>
-        <span class="divider divider-horizontal mx-0 !w-[1px]"></span>
+        <span class="border-l border-gray-300"></span>
         <input
-          class="input h-full border-none rounded-none bg-gray-100 hover:cursor-text hover:bg-white focus:bg-white px-2 w-full"
+          class="h-full border-none rounded-none bg-gray-100 hover:cursor-text hover:bg-white focus:bg-white px-2 w-full"
           type="text"
           placeholder="Describe your query"
           bind:value={cell.description}
         />
         <input
-          class="input h-full border-t-0 border-b-0 border-gray-300 rounded-none bg-gray-100 hover:cursor-text hover:bg-white focus:bg-white px-2"
+          class="h-full border-t-0 border-b-0 border-gray-300 rounded-none bg-gray-100 hover:cursor-text hover:bg-white focus:bg-white px-2"
           type="text"
           placeholder="Path name"
           bind:value={cell.path}
         />
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex gap-1 items-stretch">
         {#if cell.template?.enabled}
           <label
             class="swap hover:bg-yellow-200 hover:cursor-pointer px-2 h-full"
@@ -223,13 +270,32 @@
           <div class="swap-on"><Wifi /></div>
           <div class="swap-off"><WifiOff /></div>
         </label>
-        <button
-          class="text-black px-2 hover:cursor-pointer hover:bg-red-500 hover:text-white h-full"
-          onclick={runQuery}
-          title="Run Query"
-        >
-          <Play />
-        </button>
+        <div class="relative flex items-center" bind:this={runDropdownRef}>
+          <button
+            class="text-black px-2 hover:cursor-pointer hover:bg-red-500 hover:text-white h-full"
+            onclick={runQuery}
+            title="Run Query"
+          >
+            <Play />
+          </button>
+          <button
+            class="text-black px-0.5 hover:cursor-pointer hover:bg-red-500 hover:text-white h-full border-l border-gray-300"
+            onclick={() => { runDropdownOpen = !runDropdownOpen; }}
+            title="Run options"
+          >
+            <ChevronDown size={14} />
+          </button>
+          {#if runDropdownOpen}
+            <div class="absolute right-0 top-full bg-white z-20 shadow-sm border border-gray-300 whitespace-nowrap">
+              <button
+                class="w-full px-3 py-1.5 text-left text-xs hover:bg-blue-500 hover:text-white hover:cursor-pointer"
+                onclick={() => { runDropdownOpen = false; runQueryBackground(); }}
+              >
+                Run in Background
+              </button>
+            </div>
+          {/if}
+        </div>
       </div>
     </div>
     <div class="flex justify-between">
@@ -602,7 +668,7 @@
     </button>
 
     <details
-      class="dropdown dropdown-bottom dropdown-end marker:content-['']"
+      class="relative marker:content-['']"
       bind:this={dropdownRef}
     >
       <summary
@@ -611,7 +677,7 @@
       >
         <Ellipsis class="text-gray-600" />
       </summary>
-      <ul class="dropdown-content bg-base-100 z-1 shadow-sm w-32">
+      <ul class="absolute right-0 top-full bg-white z-10 shadow-sm w-32 border border-gray-300">
         <li>
           <button
             class:hover:bg-red-500={cell.mode?.enabled}
@@ -647,7 +713,7 @@
           </button>
         </li>
         <li>
-          <span class="divider my-0"></span>
+          <span class="block border-b border-gray-300"></span>
           <button
             class="w-full p-1 text-black hover:bg-red-500 hover:text-white hover:cursor-pointer flex text-sm items-center"
             onclick={deleteFunc}

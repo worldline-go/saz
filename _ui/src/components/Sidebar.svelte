@@ -1,7 +1,7 @@
 <script lang="ts">
   import active from "svelte-spa-router/active";
   import { storeNoteIds } from "@/store/store";
-  import { Plus } from "@lucide/svelte";
+  import { Plus, Activity } from "@lucide/svelte";
   import { push } from "svelte-spa-router";
   import { ulid } from "ulid";
 </script>
@@ -19,6 +19,22 @@
         }}
       >
         <span class="block px-2">SAZ</span>
+      </a>
+    </div>
+    <div class="border-b border-black leading-8">
+      <a
+        href="#/process"
+        class="block h-full hover:bg-yellow-200 hover:text-black"
+        use:active={{
+          path: `/process`,
+          className: "bg-black text-white",
+          inactiveClassName: "bg-white text-black",
+        }}
+      >
+        <span class="px-2 flex items-center gap-1">
+          <Activity size={14} />
+          Processes
+        </span>
       </a>
     </div>
     <div

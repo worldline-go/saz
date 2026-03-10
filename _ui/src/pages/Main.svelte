@@ -5,7 +5,7 @@
 <div class="flex flex-col justify-between bg-gray-200">
   <div class="p-2">
     <span class="font-semibold text-black"> SAZ (Structured Access Zone) </span>
-    <div class="divider my-1"></div>
+    <div class="border-b border-gray-300 my-1"></div>
     <div>
       <span>Connected Databases</span>
       <div class="mt-2">

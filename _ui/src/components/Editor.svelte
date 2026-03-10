@@ -13,6 +13,9 @@
 <CodeMirror
   bind:value
   lang={sql()}
-  class="{collapse ? 'h-7' : 'min-h-7'} {className}"
+  lineNumbers={false}
+  foldGutter={false}
+  highlight={{ activeLine: false, activeLineGutter: false }}
+  class="{collapse ? 'h-7 overflow-hidden' : 'min-h-7'} {className}"
   {readonly}
 />

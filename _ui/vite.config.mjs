@@ -15,6 +15,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  optimizeDeps: {
+    exclude: ["svelte-codemirror-editor", "codemirror", "@codemirror/lang-sql"],
+  },
   build: {
     sourcemap: process.env.NODE_ENV == "production" ? false : true,
   },

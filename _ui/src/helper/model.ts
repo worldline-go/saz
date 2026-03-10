@@ -89,3 +89,23 @@ export type idName = {
   id: string;
   name: string;
 };
+
+export type processStatus = "running" | "completed" | "failed" | "terminated";
+
+export type processInfo = {
+  note?: string;
+  query?: string;
+  description?: string;
+  rows_affected?: number;
+  error?: string;
+  duration?: string;
+};
+
+export type process = {
+  id: string;
+  status: processStatus;
+  info: processInfo;
+  user?: string;
+  created_at: string;
+  updated_at: string;
+};

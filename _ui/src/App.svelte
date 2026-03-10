@@ -10,6 +10,7 @@
 
   import NotePage from "@/pages/Note.svelte";
   import MainPage from "@/pages/Main.svelte";
+  import ProcessPage from "@/pages/Process.svelte";
 
   import { requestInfo, requestNotes } from "@/helper/call";
 
@@ -18,6 +19,7 @@
 
   const routes = {
     "/note/:id": NotePage,
+    "/process": ProcessPage,
     "/": MainPage,
   };
 

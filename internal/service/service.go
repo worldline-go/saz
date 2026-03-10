@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 
 	"github.com/rakunlabs/logi"
 	"github.com/worldline-go/saz/internal/render"
@@ -13,13 +14,44 @@ import (
 type Service struct {
 	db    Database
 	store Storer
+
+	cancelMu  sync.Mutex
+	cancelMap map[string]context.CancelFunc
 }
 
 func New(db Database, store Storer) *Service {
 	return &Service{
-		db:    db,
-		store: store,
+		db:        db,
+		store:     store,
+		cancelMap: make(map[string]context.CancelFunc),
 	}
+}
+
+// RegisterCancel stores a cancel function for a process ID.
+func (s *Service) RegisterCancel(pid string, cancel context.CancelFunc) {
+	s.cancelMu.Lock()
+	defer s.cancelMu.Unlock()
+	s.cancelMap[pid] = cancel
+}
+
+// CancelProcess invokes and removes the cancel function for a process ID.
+// Returns true if a cancel function was found and invoked.
+func (s *Service) CancelProcess(pid string) bool {
+	s.cancelMu.Lock()
+	defer s.cancelMu.Unlock()
+	if cancel, ok := s.cancelMap[pid]; ok {
+		cancel()
+		delete(s.cancelMap, pid)
+		return true
+	}
+	return false
+}
+
+// RemoveCancel removes the cancel function for a process ID without invoking it.
+func (s *Service) RemoveCancel(pid string) {
+	s.cancelMu.Lock()
+	defer s.cancelMu.Unlock()
+	delete(s.cancelMap, pid)
 }
 
 func (s *Service) Run(ctx context.Context, cell *Cell, values map[string]any, dependency map[string]struct{}) (result Result, err error) {

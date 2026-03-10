@@ -22,7 +22,9 @@ type CellWithValues struct {
 }
 
 func (s *Server) run(c *ada.Context) error {
-	ctx := context.WithoutCancel(c.Request.Context())
+	baseCtx := context.WithoutCancel(c.Request.Context())
+	ctx, cancel := context.WithCancel(baseCtx)
+	defer cancel()
 
 	var cell CellWithValues
 	if err := json.NewDecoder(c.Request.Body).Decode(&cell); err != nil {
@@ -32,10 +34,25 @@ func (s *Server) run(c *ada.Context) error {
 		})
 	}
 
+	// Create process record
+	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
+		Query:       cell.Cell.Content,
+		Description: cell.Cell.Description.V,
+	}, cancel)
+	if err != nil {
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to create process",
+			Error:   err.Error(),
+		})
+	}
+
+	start := time.Now()
+
 	cellResult := make(map[string]any)
 	for key, depCell := range cell.Cells {
 		depResult, err := s.service.Run(ctx, depCell, cell.Values, nil)
 		if err != nil {
+			s.service.FailProcess(baseCtx, pid, err, time.Since(start))
 			return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
 				Message: "Failed to execute dependency cell; " + depCell.Description.V,
 				Error:   err.Error(),
@@ -50,6 +67,8 @@ func (s *Server) run(c *ada.Context) error {
 
 	result, err := s.service.Run(ctx, &cell.Cell, cell.Values, nil)
 	if err != nil {
+		s.service.FailProcess(baseCtx, pid, err, time.Since(start))
+
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
 				Message: "Resource not found",
@@ -70,6 +89,8 @@ func (s *Server) run(c *ada.Context) error {
 		})
 	}
 
+	s.service.CompleteProcess(baseCtx, pid, result.RowsAffected(), result.Duration())
+
 	return c.SetStatus(http.StatusOK).SendJSON(ResponseQuery{
 		RowsAffected: result.RowsAffected(),
 		Columns:      result.Columns(),
@@ -78,8 +99,74 @@ func (s *Server) run(c *ada.Context) error {
 	})
 }
 
+func (s *Server) runBackground(c *ada.Context) error {
+	baseCtx := context.WithoutCancel(c.Request.Context())
+
+	var cell CellWithValues
+	if err := json.NewDecoder(c.Request.Body).Decode(&cell); err != nil {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Invalid request format",
+			Error:   err.Error(),
+		})
+	}
+
+	// Create a context that is NOT tied to the HTTP request lifecycle.
+	// The goroutine owns this context; it will be cancelled when the query
+	// finishes, fails, or is terminated via the Process page.
+	ctx, cancel := context.WithCancel(baseCtx)
+
+	// Create process record — registers the cancel func for termination support.
+	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
+		Query:       cell.Cell.Content,
+		Description: cell.Cell.Description.V,
+	}, cancel)
+	if err != nil {
+		cancel()
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to create process",
+			Error:   err.Error(),
+		})
+	}
+
+	// Launch execution in background goroutine
+	go func() {
+		defer cancel()
+
+		start := time.Now()
+
+		cellResult := make(map[string]any)
+		for key, depCell := range cell.Cells {
+			depResult, err := s.service.Run(ctx, depCell, cell.Values, nil)
+			if err != nil {
+				s.service.FailProcess(baseCtx, pid, err, time.Since(start))
+				return
+			}
+
+			depRows := service.DataToMap(depResult.Columns(), depResult.Rows())
+			cellResult[key] = depRows
+		}
+
+		cell.Values["cells"] = cellResult
+
+		result, err := s.service.Run(ctx, &cell.Cell, cell.Values, nil)
+		if err != nil {
+			s.service.FailProcess(baseCtx, pid, err, time.Since(start))
+			return
+		}
+
+		s.service.CompleteProcess(baseCtx, pid, result.RowsAffected(), result.Duration())
+	}()
+
+	return c.SetStatus(http.StatusAccepted).SendJSON(ResponseBackground{
+		PID:     pid,
+		Message: "Query running in background",
+	})
+}
+
 func (s *Server) runNote(c *ada.Context) error {
-	ctx := context.WithoutCancel(c.Request.Context())
+	baseCtx := context.WithoutCancel(c.Request.Context())
+	ctx, cancel := context.WithCancel(baseCtx)
+	defer cancel()
 
 	noteName := c.Request.PathValue("note")
 
@@ -91,7 +178,22 @@ func (s *Server) runNote(c *ada.Context) error {
 		})
 	}
 
+	// Create process record
+	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
+		Note: noteName,
+	}, cancel)
+	if err != nil {
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to create process",
+			Error:   err.Error(),
+		})
+	}
+
+	start := time.Now()
+
 	if err := s.service.RunNote(ctx, noteName, values); err != nil {
+		s.service.FailProcess(baseCtx, pid, err, time.Since(start))
+
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
 				Message: "Resource not found",
@@ -112,13 +214,17 @@ func (s *Server) runNote(c *ada.Context) error {
 		})
 	}
 
+	s.service.CompleteProcess(baseCtx, pid, 0, time.Since(start))
+
 	return c.SetStatus(http.StatusOK).SendJSON(Response{
 		Message: "Note executed successfully",
 	})
 }
 
 func (s *Server) runNoteCell(c *ada.Context) error {
-	ctx := context.WithoutCancel(c.Request.Context())
+	baseCtx := context.WithoutCancel(c.Request.Context())
+	ctx, cancel := context.WithCancel(baseCtx)
+	defer cancel()
 
 	noteName := c.Request.PathValue("note")
 	cellPath := c.Request.PathValue("cell")
@@ -131,8 +237,24 @@ func (s *Server) runNoteCell(c *ada.Context) error {
 		})
 	}
 
+	// Create process record
+	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
+		Note:        noteName,
+		Description: cellPath,
+	}, cancel)
+	if err != nil {
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to create process",
+			Error:   err.Error(),
+		})
+	}
+
+	start := time.Now()
+
 	result, err := s.service.RunNoteCell(ctx, noteName, cellPath, values)
 	if err != nil {
+		s.service.FailProcess(baseCtx, pid, err, time.Since(start))
+
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
 				Message: "Resource not found",
@@ -152,6 +274,8 @@ func (s *Server) runNoteCell(c *ada.Context) error {
 			Error:   err.Error(),
 		})
 	}
+
+	s.service.CompleteProcess(baseCtx, pid, result.RowsAffected(), result.Duration())
 
 	return c.SetStatus(http.StatusOK).SendJSON(ResponseQuery{
 		RowsAffected: result.RowsAffected(),
@@ -387,6 +511,27 @@ func (s *Server) actionProcessID(c *ada.Context) error {
 
 	return c.SetStatus(http.StatusOK).SendJSON(Response{
 		Message: "Action performed successfully",
+	})
+}
+
+func (s *Server) deleteProcess(c *ada.Context) error {
+	q, err := query.Parse(c.Request.URL.RawQuery)
+	if err != nil {
+		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
+			Message: "Invalid query parameters",
+			Error:   err.Error(),
+		})
+	}
+
+	if err := s.service.DeleteProcess(c.Request.Context(), q); err != nil {
+		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
+			Message: "Failed to delete processes",
+			Error:   err.Error(),
+		})
+	}
+
+	return c.SetStatus(http.StatusOK).SendJSON(Response{
+		Message: "Processes deleted successfully",
 	})
 }
 

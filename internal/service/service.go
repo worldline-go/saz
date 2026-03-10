@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
 	"sync"
+	"time"
 
+	"github.com/rakunlabs/alan"
 	"github.com/rakunlabs/logi"
 	"github.com/worldline-go/saz/internal/render"
 )
@@ -17,13 +20,87 @@ type Service struct {
 
 	cancelMu  sync.Mutex
 	cancelMap map[string]context.CancelFunc
+
+	alan *alan.Alan
 }
 
-func New(db Database, store Storer) *Service {
-	return &Service{
+// peerMessage is the message format exchanged between instances via alan.
+type peerMessage struct {
+	Action string `json:"action"`
+	PID    string `json:"pid"`
+}
+
+// peerResponse is the response format for alan peer messages.
+type peerResponse struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+}
+
+func New(db Database, store Storer, cfg *alan.Config) (*Service, error) {
+	s := &Service{
 		db:        db,
 		store:     store,
 		cancelMap: make(map[string]context.CancelFunc),
+	}
+
+	if cfg != nil {
+		a, err := alan.New(*cfg)
+		if err != nil {
+			return nil, fmt.Errorf("init alan: %w", err)
+		}
+
+		s.alan = a
+		slog.Info("alan distributed communication enabled", "dns_addr", cfg.DNSAddr, "port", cfg.Port)
+	}
+
+	return s, nil
+}
+
+// StartAlan starts the alan peer communication. Blocks until ctx is cancelled.
+// Returns nil immediately if alan is not configured.
+func (s *Service) StartAlan(ctx context.Context) error {
+	if s.alan == nil {
+		return nil
+	}
+
+	return s.alan.Start(ctx, s.handlePeerMessage)
+}
+
+// StopAlan gracefully stops alan peer communication.
+func (s *Service) StopAlan() error {
+	if s.alan == nil {
+		return nil
+	}
+
+	return s.alan.Stop()
+}
+
+// handlePeerMessage processes incoming messages from alan peers.
+func (s *Service) handlePeerMessage(_ context.Context, msg alan.Message) {
+	if !msg.IsRequest() {
+		return
+	}
+
+	var req peerMessage
+	if err := json.Unmarshal(msg.Data, &req); err != nil {
+		slog.Error("alan: failed to unmarshal peer message", "error", err)
+		resp, _ := json.Marshal(peerResponse{OK: false, Error: "invalid message"})
+		s.alan.Reply(msg, resp)
+		return
+	}
+
+	switch req.Action {
+	case "terminate":
+		found := s.cancelProcessLocal(req.PID)
+		resp, _ := json.Marshal(peerResponse{OK: found})
+		s.alan.Reply(msg, resp)
+
+		if found {
+			slog.Info("alan: terminated process from peer request", "pid", req.PID)
+		}
+	default:
+		resp, _ := json.Marshal(peerResponse{OK: false, Error: "unknown action"})
+		s.alan.Reply(msg, resp)
 	}
 }
 
@@ -35,8 +112,46 @@ func (s *Service) RegisterCancel(pid string, cancel context.CancelFunc) {
 }
 
 // CancelProcess invokes and removes the cancel function for a process ID.
-// Returns true if a cancel function was found and invoked.
+// If not found locally and alan is configured, broadcasts to peers.
+// Returns true if a cancel function was found and invoked (locally or on a peer).
 func (s *Service) CancelProcess(pid string) bool {
+	// Fast path: try local first
+	if s.cancelProcessLocal(pid) {
+		return true
+	}
+
+	// Distributed path: ask peers via alan
+	if s.alan == nil {
+		return false
+	}
+
+	req, _ := json.Marshal(peerMessage{Action: "terminate", PID: pid})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	replies, err := s.alan.SendAndWaitReply(ctx, req)
+	if err != nil {
+		slog.Error("alan: failed to broadcast terminate", "pid", pid, "error", err)
+		return false
+	}
+
+	for _, reply := range replies {
+		var resp peerResponse
+		if err := json.Unmarshal(reply.Data, &resp); err != nil {
+			continue
+		}
+		if resp.OK {
+			slog.Info("alan: process terminated by peer", "pid", pid, "peer", reply.Addr)
+			return true
+		}
+	}
+
+	return false
+}
+
+// cancelProcessLocal invokes and removes the cancel function from the local map only.
+func (s *Service) cancelProcessLocal(pid string) bool {
 	s.cancelMu.Lock()
 	defer s.cancelMu.Unlock()
 	if cancel, ok := s.cancelMap[pid]; ok {
@@ -146,14 +261,14 @@ func (s *Service) Run(ctx context.Context, cell *Cell, values map[string]any, de
 	return s.db.Exec(ctx, cell.DBType, content)
 }
 
-func (s *Service) RunNote(ctx context.Context, notePath string, values map[string]any) (err error) {
+func (s *Service) RunNote(ctx context.Context, notePath string, values map[string]any) (cellInfos []ProcessCellInfo, err error) {
 	if notePath == "" {
-		return fmt.Errorf("note path is empty; %w", ErrBadRequest)
+		return nil, fmt.Errorf("note path is empty; %w", ErrBadRequest)
 	}
 
 	note, err := s.store.GetWithPath(ctx, notePath)
 	if err != nil {
-		return fmt.Errorf("get note by path %s: %w", notePath, err)
+		return nil, fmt.Errorf("get note by path %s: %w", notePath, err)
 	}
 
 	// get all dependencies
@@ -181,8 +296,16 @@ func (s *Service) RunNote(ctx context.Context, notePath string, values map[strin
 	for i := range note.Content.Cells {
 		logCell := slog.Group("cell", slog.String("description", note.Content.Cells[i].Description.V), slog.Int("number", i+1))
 		ctxCell := logi.WithContext(ctx, logi.Ctx(ctx).With(logNote, logCell))
+
+		cellInfo := ProcessCellInfo{
+			Description: note.Content.Cells[i].Description.V,
+			Query:       truncateQuery(note.Content.Cells[i].Content),
+		}
+
 		if !note.Content.Cells[i].Enabled.V {
 			logi.Ctx(ctx).Info("cell is disabled, skipping execution", logCell)
+			cellInfo.Status = "skipped"
+			cellInfos = append(cellInfos, cellInfo)
 			continue
 		}
 
@@ -190,13 +313,31 @@ func (s *Service) RunNote(ctx context.Context, notePath string, values map[strin
 			note.Content.Cells[i].Result.V = false
 		}
 
-		_, err := s.Run(ctxCell, &note.Content.Cells[i], values, dependency)
-		if err != nil {
-			return fmt.Errorf("%s; %w", note.Content.Cells[i].Description.V, err)
+		cellStart := time.Now()
+		result, runErr := s.Run(ctxCell, &note.Content.Cells[i], values, dependency)
+		cellInfo.Duration = time.Since(cellStart).Truncate(time.Microsecond).String()
+
+		if runErr != nil {
+			cellInfo.Status = "failed"
+			cellInfo.Error = runErr.Error()
+			cellInfos = append(cellInfos, cellInfo)
+			return cellInfos, fmt.Errorf("%s; %w", note.Content.Cells[i].Description.V, runErr)
 		}
+
+		cellInfo.Status = "completed"
+		cellInfo.RowsAffected = result.RowsAffected()
+		cellInfos = append(cellInfos, cellInfo)
 	}
 
-	return nil
+	return cellInfos, nil
+}
+
+// truncateQuery returns the first 500 characters of a query for storage in process info.
+func truncateQuery(q string) string {
+	if len(q) <= 500 {
+		return q
+	}
+	return q[:500] + "..."
 }
 
 func (s *Service) RunNoteCell(ctx context.Context, notePath string, cellPath string, values map[string]any) (result Result, err error) {

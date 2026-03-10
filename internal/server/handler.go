@@ -191,8 +191,9 @@ func (s *Server) runNote(c *ada.Context) error {
 
 	start := time.Now()
 
-	if err := s.service.RunNote(ctx, noteName, values); err != nil {
-		s.service.FailProcess(baseCtx, pid, err, time.Since(start))
+	cellInfos, err := s.service.RunNote(ctx, noteName, values)
+	if err != nil {
+		s.service.FailProcessWithCells(baseCtx, pid, err, time.Since(start), cellInfos)
 
 		if errors.Is(err, service.ErrNotExists) {
 			return c.SetStatus(http.StatusNotFound).SendJSON(Response{
@@ -214,7 +215,7 @@ func (s *Server) runNote(c *ada.Context) error {
 		})
 	}
 
-	s.service.CompleteProcess(baseCtx, pid, 0, time.Since(start))
+	s.service.CompleteProcessWithCells(baseCtx, pid, 0, time.Since(start), cellInfos)
 
 	return c.SetStatus(http.StatusOK).SendJSON(Response{
 		Message: "Note executed successfully",

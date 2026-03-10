@@ -92,6 +92,15 @@ export type idName = {
 
 export type processStatus = "running" | "completed" | "failed" | "terminated";
 
+export type processCellInfo = {
+  description?: string;
+  query?: string;
+  status: string;
+  duration?: string;
+  error?: string;
+  rows_affected?: number;
+};
+
 export type processInfo = {
   note?: string;
   query?: string;
@@ -99,6 +108,7 @@ export type processInfo = {
   rows_affected?: number;
   error?: string;
   duration?: string;
+  cells?: processCellInfo[];
 };
 
 export type process = {

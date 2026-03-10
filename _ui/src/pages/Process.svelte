@@ -261,7 +261,7 @@
         {/if}
         {#each filteredProcesses as proc (proc.id)}
           {@const isExpanded = expandedIds.has(proc.id)}
-          {@const hasDetail = proc.info.query || proc.info.error}
+          {@const hasDetail = proc.info.query || proc.info.error || (proc.info.cells && proc.info.cells.length > 0)}
           <tr
             class={[
               "border-b border-gray-200 transition-colors duration-100",
@@ -330,6 +330,51 @@
                     <div class="px-4 py-2">
                       <span class="text-gray-400 text-xs uppercase tracking-wide">Query</span>
                       <pre class="mt-1 text-sm text-gray-700 whitespace-pre-wrap break-all bg-white border border-gray-200 rounded px-3 py-2 max-h-72 overflow-y-auto">{proc.info.query}</pre>
+                    </div>
+                  {/if}
+                  {#if proc.info.cells && proc.info.cells.length > 0}
+                    <div class="px-4 py-2">
+                      <span class="text-gray-400 text-xs uppercase tracking-wide">Cells</span>
+                      <table class="mt-1 w-full text-sm border border-gray-200 rounded overflow-hidden">
+                        <thead>
+                          <tr class="bg-gray-50 text-left text-gray-500 text-xs">
+                            <th class="px-3 py-1.5 w-8">#</th>
+                            <th class="px-3 py-1.5">Description</th>
+                            <th class="px-3 py-1.5 w-24">Status</th>
+                            <th class="px-3 py-1.5 w-28">Duration</th>
+                            <th class="px-3 py-1.5 w-20">Rows</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {#each proc.info.cells as cell, idx}
+                            {@const cellStatusColor =
+                              cell.status === "completed" ? "bg-green-100 text-green-700" :
+                              cell.status === "failed" ? "bg-red-100 text-red-700" :
+                              cell.status === "skipped" ? "bg-gray-100 text-gray-500" :
+                              "bg-gray-100 text-gray-500"
+                            }
+                            <tr class="border-t border-gray-200">
+                              <td class="px-3 py-1.5 text-gray-400 tabular-nums">{idx + 1}</td>
+                              <td class="px-3 py-1.5">
+                                <div class="truncate max-w-md" title={cell.description}>{cell.description || "-"}</div>
+                                {#if cell.query}
+                                  <pre class="mt-1 text-xs text-gray-500 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">{cell.query}</pre>
+                                {/if}
+                                {#if cell.error}
+                                  <div class="mt-1 text-xs text-red-600">{cell.error}</div>
+                                {/if}
+                              </td>
+                              <td class="px-3 py-1.5">
+                                <span class={["px-2 py-0.5 text-xs font-medium rounded", cellStatusColor]}>
+                                  {cell.status}
+                                </span>
+                              </td>
+                              <td class="px-3 py-1.5 tabular-nums">{cell.duration || "-"}</td>
+                              <td class="px-3 py-1.5 tabular-nums">{cell.rows_affected ?? "-"}</td>
+                            </tr>
+                          {/each}
+                        </tbody>
+                      </table>
                     </div>
                   {/if}
                 </div>

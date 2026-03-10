@@ -123,12 +123,22 @@ const (
 )
 
 type ProcessInfo struct {
-	Note         string `json:"note,omitempty"`
-	Query        string `json:"query,omitempty"`
+	Note         string            `json:"note,omitempty"`
+	Query        string            `json:"query,omitempty"`
+	Description  string            `json:"description,omitempty"`
+	RowsAffected int64             `json:"rows_affected,omitempty"`
+	Error        string            `json:"error,omitempty"`
+	Duration     string            `json:"duration,omitempty"`
+	Cells        []ProcessCellInfo `json:"cells,omitempty"`
+}
+
+type ProcessCellInfo struct {
 	Description  string `json:"description,omitempty"`
-	RowsAffected int64  `json:"rows_affected,omitempty"`
-	Error        string `json:"error,omitempty"`
+	Query        string `json:"query,omitempty"`
+	Status       string `json:"status"`
 	Duration     string `json:"duration,omitempty"`
+	Error        string `json:"error,omitempty"`
+	RowsAffected int64  `json:"rows_affected,omitempty"`
 }
 
 // /////////////////////////////////////////////

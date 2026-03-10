@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/rakunlabs/alan"
 	"github.com/rakunlabs/chu"
 	"github.com/rakunlabs/logi"
 	"github.com/worldline-go/tell"
@@ -23,6 +24,7 @@ type Config struct {
 	Server   Server              `cfg:"server"`
 	Database map[string]Database `cfg:"database"`
 	Store    Store               `cfg:"store"`
+	Alan     *alan.Config        `cfg:"alan"`
 
 	Telemetry tell.Config `cfg:"telemetry"`
 }

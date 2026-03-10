@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/rakunlabs/into"
 	"github.com/rakunlabs/logi"
@@ -54,10 +55,21 @@ func run(ctx context.Context) error {
 	}
 	defer st.Close()
 
-	svc := service.New(db, st)
+	svc, err := service.New(db, st, cfg.Alan)
+	if err != nil {
+		return fmt.Errorf("init service; %w", err)
+	}
+	defer svc.StopAlan()
 
 	// Mark any stale running processes as failed on startup
 	svc.CleanupStaleProcesses(ctx)
+
+	// Start alan in background if configured
+	go func() {
+		if err := svc.StartAlan(ctx); err != nil {
+			slog.Error("alan stopped", "error", err)
+		}
+	}()
 
 	srv, err := server.New(ctx, cfg.Server, svc)
 	if err != nil {

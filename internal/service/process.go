@@ -52,6 +52,11 @@ func (s *Service) CreateProcess(ctx context.Context, info ProcessInfo, cancel co
 
 // CompleteProcess updates a process to completed status with result info.
 func (s *Service) CompleteProcess(ctx context.Context, pid string, rowsAffected int64, duration time.Duration) {
+	s.CompleteProcessWithCells(ctx, pid, rowsAffected, duration, nil)
+}
+
+// CompleteProcessWithCells updates a process to completed status with result info and cell details.
+func (s *Service) CompleteProcessWithCells(ctx context.Context, pid string, rowsAffected int64, duration time.Duration, cells []ProcessCellInfo) {
 	s.RemoveCancel(pid)
 
 	process, err := s.GetProcessID(ctx, pid)
@@ -68,6 +73,9 @@ func (s *Service) CompleteProcess(ctx context.Context, pid string, rowsAffected 
 	process.Status = ProcessStatusCompleted
 	process.Info.RowsAffected = rowsAffected
 	process.Info.Duration = duration.Truncate(time.Microsecond).String()
+	if len(cells) > 0 {
+		process.Info.Cells = cells
+	}
 
 	if err := s.store.SaveProcess(ctx, process); err != nil {
 		slog.Error("complete process: save process", "pid", pid, "error", err)
@@ -76,6 +84,11 @@ func (s *Service) CompleteProcess(ctx context.Context, pid string, rowsAffected 
 
 // FailProcess updates a process to failed status with error info.
 func (s *Service) FailProcess(ctx context.Context, pid string, processErr error, duration time.Duration) {
+	s.FailProcessWithCells(ctx, pid, processErr, duration, nil)
+}
+
+// FailProcessWithCells updates a process to failed status with error info and cell details.
+func (s *Service) FailProcessWithCells(ctx context.Context, pid string, processErr error, duration time.Duration, cells []ProcessCellInfo) {
 	s.RemoveCancel(pid)
 
 	process, err := s.GetProcessID(ctx, pid)
@@ -92,6 +105,9 @@ func (s *Service) FailProcess(ctx context.Context, pid string, processErr error,
 	process.Status = ProcessStatusFailed
 	process.Info.Error = processErr.Error()
 	process.Info.Duration = duration.Truncate(time.Microsecond).String()
+	if len(cells) > 0 {
+		process.Info.Cells = cells
+	}
 
 	if err := s.store.SaveProcess(ctx, process); err != nil {
 		slog.Error("fail process: save process", "pid", pid, "error", err)

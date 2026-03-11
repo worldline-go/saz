@@ -89,7 +89,6 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 	baseGroup.GET("/api/v1/process", baseGroup.Wrap(s.getProcess))
 	baseGroup.GET("/api/v1/process/{pid}", baseGroup.Wrap(s.getProcessID))
 	baseGroup.POST("/api/v1/process/{pid}", baseGroup.Wrap(s.actionProcessID))
-	baseGroup.DELETE("/api/v1/process", baseGroup.Wrap(s.deleteProcess))
 
 	// ////////////////////////////////////////////
 

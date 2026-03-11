@@ -3,13 +3,11 @@
   import {
     requestProcesses,
     requestProcessTerminate,
-    requestProcessDelete,
     type ProcessQueryParams,
   } from "@/helper/call";
   import { addToast } from "@/store/toast";
   import {
     RefreshCw,
-    Trash,
     XCircle,
     ChevronRight,
     ChevronDown,
@@ -59,19 +57,6 @@
       const msg =
         error?.response?.data?.error || error?.message || "Unknown error";
       addToast("Error terminating process: " + msg, "alert");
-    }
-  };
-
-  const clearProcesses = async () => {
-    if (!confirm("Clear all processes? This cannot be undone.")) return;
-    try {
-      await requestProcessDelete();
-      addToast("Processes cleared", "info");
-      await fetchProcesses();
-    } catch (error: any) {
-      const msg =
-        error?.response?.data?.error || error?.message || "Unknown error";
-      addToast("Error clearing processes: " + msg, "alert");
     }
   };
 
@@ -198,13 +183,6 @@
       />
     </div>
     <div class="flex items-center">
-      <button
-        class="px-2 h-8 hover:cursor-pointer hover:bg-red-100 text-gray-600 hover:text-red-600"
-        onclick={clearProcesses}
-        title="Clear all processes"
-      >
-        <Trash size={16} />
-      </button>
       <button
         class="px-2 h-8 hover:cursor-pointer hover:bg-gray-200 text-gray-600"
         onclick={fetchProcesses}

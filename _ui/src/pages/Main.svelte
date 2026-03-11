@@ -11,7 +11,7 @@
       <div class="mt-2">
         {#each ($storeInfo?.databases || []).sort( (a, b) => a.localeCompare(b), ) as db}
           <div
-            class="px-1 bg-yellow-50 border border-black hover:shadow shadow-black"
+            class="px-1 mb-1 bg-yellow-50 border border-black hover:shadow shadow-black"
           >
             {db}
           </div>

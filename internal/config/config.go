@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/rakunlabs/alan"
 	"github.com/rakunlabs/chu"
@@ -24,9 +25,15 @@ type Config struct {
 	Server   Server              `cfg:"server"`
 	Database map[string]Database `cfg:"database"`
 	Store    Store               `cfg:"store"`
+	Process  Process             `cfg:"process"`
 	Alan     *alan.Config        `cfg:"alan"`
 
 	Telemetry tell.Config `cfg:"telemetry"`
+}
+
+type Process struct {
+	Retention time.Duration `cfg:"retention" default:"14d"`
+	Interval  time.Duration `cfg:"interval" default:"1d"`
 }
 
 type Server struct {

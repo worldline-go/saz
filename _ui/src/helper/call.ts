@@ -106,10 +106,6 @@ export const requestProcessTerminate = async (pid: string) => {
   return axios.post(`./api/v1/process/${pid}`, { action: "terminate" });
 };
 
-export const requestProcessDelete = async () => {
-  return axios.delete("./api/v1/process");
-};
-
 export const requestNoteSave = async (note: notebook) => {
   try {
     await axios.put(`./api/v1/notes/${note.id}`, note)

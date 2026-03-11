@@ -156,9 +156,48 @@ func (s *Service) ActionProcessID(ctx context.Context, pid string, action Proces
 	}
 }
 
-// DeleteProcess deletes processes matching the query.
-func (s *Service) DeleteProcess(ctx context.Context, q *query.Query) error {
-	return s.store.DeleteProcess(ctx, q)
+// StartProcessCleanup runs periodic cleanup of old process records.
+// If alan is configured, a distributed lock ensures only one instance
+// runs the cleanup loop. Other instances block on Lock until the holder
+// exits or crashes, then one takes over automatically.
+// Blocks until ctx is cancelled.
+func (s *Service) StartProcessCleanup(ctx context.Context, retention, interval time.Duration) {
+	if s.alan != nil {
+		if err := s.alan.Lock(ctx, "process_cleanup"); err != nil {
+			slog.Error("process cleanup: failed to acquire lock", "error", err)
+			return
+		}
+		defer s.alan.Unlock("process_cleanup")
+		slog.Info("process cleanup: acquired distributed lock")
+	}
+
+	s.cleanupOldProcesses(ctx, retention)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.cleanupOldProcesses(ctx, retention)
+		}
+	}
+}
+
+func (s *Service) cleanupOldProcesses(ctx context.Context, retention time.Duration) {
+	before := time.Now().Add(-retention)
+
+	deleted, err := s.store.DeleteProcessBefore(ctx, before)
+	if err != nil {
+		slog.Error("process cleanup failed", "error", err)
+		return
+	}
+
+	if deleted > 0 {
+		slog.Info("cleaned up old processes", "deleted", deleted, "older_than", before.Format(time.RFC3339))
+	}
 }
 
 // CleanupStaleProcesses marks all running processes as failed on startup.

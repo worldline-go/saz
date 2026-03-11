@@ -14,3 +14,7 @@ store:
     migrate:
       db_datasource: "postgres://postgres@localhost:5432/postgres?sslmode=disable"
       db_schema: "public"
+
+# process:
+#   retention: "14d" # remove processes older than 14 days
+#   interval: "1d"    # run cleanup every day

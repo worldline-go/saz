@@ -152,7 +152,7 @@ type Storer interface {
 
 	GetProcess(ctx context.Context, q *query.Query) ([]Process, error)
 	SaveProcess(ctx context.Context, process *Process) error
-	DeleteProcess(ctx context.Context, q *query.Query) error
+	DeleteProcessBefore(ctx context.Context, before time.Time) (int64, error)
 }
 
 // /////////////////////////////////////////////

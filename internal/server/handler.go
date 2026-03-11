@@ -515,25 +515,4 @@ func (s *Server) actionProcessID(c *ada.Context) error {
 	})
 }
 
-func (s *Server) deleteProcess(c *ada.Context) error {
-	q, err := query.Parse(c.Request.URL.RawQuery)
-	if err != nil {
-		return c.SetStatus(http.StatusBadRequest).SendJSON(Response{
-			Message: "Invalid query parameters",
-			Error:   err.Error(),
-		})
-	}
-
-	if err := s.service.DeleteProcess(c.Request.Context(), q); err != nil {
-		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
-			Message: "Failed to delete processes",
-			Error:   err.Error(),
-		})
-	}
-
-	return c.SetStatus(http.StatusOK).SendJSON(Response{
-		Message: "Processes deleted successfully",
-	})
-}
-
 // //////////////////////////////////////////

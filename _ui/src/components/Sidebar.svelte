@@ -11,7 +11,7 @@
     <div class="border-b border-black leading-8">
       <a
         href="#/"
-        class="block h-full hover:bg-yellow-200 hover:text-black"
+        class="flex justify-around h-full hover:bg-yellow-200 hover:text-black"
         use:active={{
           path: `/`,
           className: "bg-black text-white",

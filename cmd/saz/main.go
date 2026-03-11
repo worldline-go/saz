@@ -7,13 +7,13 @@ import (
 
 	"github.com/rakunlabs/into"
 	"github.com/rakunlabs/logi"
+	"github.com/worldline-go/tell"
 
 	"github.com/worldline-go/saz/internal/config"
 	"github.com/worldline-go/saz/internal/database"
 	"github.com/worldline-go/saz/internal/server"
 	"github.com/worldline-go/saz/internal/service"
 	"github.com/worldline-go/saz/internal/store"
-	"github.com/worldline-go/tell"
 )
 
 var (
@@ -63,6 +63,12 @@ func run(ctx context.Context) error {
 
 	// Mark any stale running processes as failed on startup
 	svc.CleanupStaleProcesses(ctx)
+
+	// Start periodic process cleanup in background
+	if cfg.Process.Retention > 0 && cfg.Process.Interval > 0 {
+		slog.Info("starting process cleanup", "retention", cfg.Process.Retention, "interval", cfg.Process.Interval)
+		go svc.StartProcessCleanup(ctx, cfg.Process.Retention, cfg.Process.Interval)
+	}
 
 	// Start alan in background if configured
 	go func() {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/rakunlabs/query"
 	"github.com/rakunlabs/query/adapter/adaptergoqu"
@@ -241,11 +242,18 @@ func (s *Postgres) SaveProcess(ctx context.Context, process *service.Process) er
 	return nil
 }
 
-func (s *Postgres) DeleteProcess(ctx context.Context, q *query.Query) error {
-	_, err := s.goqu.Delete(s.tableProcess).Where(adaptergoqu.Expression(q)...).Executor().ExecContext(ctx)
+func (s *Postgres) DeleteProcessBefore(ctx context.Context, before time.Time) (int64, error) {
+	result, err := s.goqu.Delete(s.tableProcess).Where(
+		goqu.C("created_at").Lt(before),
+	).Executor().ExecContext(ctx)
 	if err != nil {
-		return fmt.Errorf("delete process: %w", err)
+		return 0, fmt.Errorf("delete process before %s: %w", before, err)
 	}
 
-	return nil
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("get rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
 }

@@ -41,13 +41,7 @@ func New(ctx context.Context, cfg config.Server, svc *service.Service) (*Server,
 		mtelemetry.Middleware(),
 		func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if privateToken != "" {
-					token := r.Header.Get("Private-Token")
-					if token == privateToken {
-						next.ServeHTTP(w, r)
-						return
-					}
-
+				if privateToken != "" && r.Header.Get("Private-Token") != privateToken {
 					ada.NewContext(w, r).
 						SetStatus(http.StatusForbidden).
 						SendJSON(Response{

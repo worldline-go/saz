@@ -1,6 +1,6 @@
 module github.com/worldline-go/saz
 
-go 1.25.7
+go 1.26
 
 require (
 	github.com/alexbrainman/odbc v0.0.0-20250601004241-49e6b2bc0cf0

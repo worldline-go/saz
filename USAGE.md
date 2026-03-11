@@ -163,3 +163,7 @@ You can also send example `status` data with GET requests by appending query par
 ```sh
 curl "http://localhost:8080/api/v1/run/my_notebook?status=active"
 ```
+
+## Development
+
+Before to tag new version always run `make build-front` command.

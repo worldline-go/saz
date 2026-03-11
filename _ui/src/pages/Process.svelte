@@ -262,11 +262,15 @@
                 {proc.status}
               </span>
             </td>
-            <td class="px-3 py-2.5 truncate max-w-56" title={proc.info.note}>
-              {proc.info.note || "-"}
+            <td class="px-3 py-2.5 max-w-56">
+              <div class="cell-truncate" title={proc.info.note}>
+                {proc.info.note || "-"}
+              </div>
             </td>
-            <td class="px-3 py-2.5 truncate max-w-64" title={proc.info.description}>
-              {proc.info.description || "-"}
+            <td class="px-3 py-2.5 max-w-64">
+              <div class="cell-truncate" title={proc.info.description}>
+                {proc.info.description || "-"}
+              </div>
             </td>
             <td class="px-3 py-2.5 tabular-nums">
               {proc.info.duration || "-"}
@@ -274,8 +278,10 @@
             <td class="px-3 py-2.5 tabular-nums">
               {proc.info.rows_affected ?? "-"}
             </td>
-            <td class="px-3 py-2.5 truncate max-w-24" title={proc.user}>
-              {proc.user || "-"}
+            <td class="px-3 py-2.5 max-w-24">
+              <div class="cell-truncate" title={proc.user}>
+                {proc.user || "-"}
+              </div>
             </td>
             <td class="px-3 py-2.5 whitespace-nowrap tabular-nums">
               {formatDate(proc.created_at)}
@@ -334,7 +340,7 @@
                             <tr class="border-t border-gray-200">
                               <td class="px-3 py-1.5 text-gray-400 tabular-nums">{idx + 1}</td>
                               <td class="px-3 py-1.5">
-                                <div class="truncate max-w-md" title={cell.description}>{cell.description || "-"}</div>
+                                <div class="cell-truncate max-w-md" title={cell.description}>{cell.description || "-"}</div>
                                 {#if cell.query}
                                   <pre class="mt-1 text-xs text-gray-500 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">{cell.query}</pre>
                                 {/if}
@@ -403,3 +409,24 @@
     </div>
   </div>
 </div>
+
+<style>
+  .cell-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cell-truncate:hover {
+    overflow: visible;
+    white-space: normal;
+    word-wrap: break-word;
+    position: relative;
+    z-index: 20;
+    background: #fffacd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin: -4px -6px;
+  }
+</style>

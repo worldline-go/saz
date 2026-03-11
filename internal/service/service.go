@@ -299,7 +299,7 @@ func (s *Service) RunNote(ctx context.Context, notePath string, values map[strin
 
 		cellInfo := ProcessCellInfo{
 			Description: note.Content.Cells[i].Description.V,
-			Query:       truncateQuery(note.Content.Cells[i].Content),
+			Query:       note.Content.Cells[i].Content,
 		}
 
 		if !note.Content.Cells[i].Enabled.V {
@@ -330,14 +330,6 @@ func (s *Service) RunNote(ctx context.Context, notePath string, values map[strin
 	}
 
 	return cellInfos, nil
-}
-
-// truncateQuery returns the first 500 characters of a query for storage in process info.
-func truncateQuery(q string) string {
-	if len(q) <= 500 {
-		return q
-	}
-	return q[:500] + "..."
 }
 
 func (s *Service) RunNoteCell(ctx context.Context, notePath string, cellPath string, values map[string]any) (result Result, err error) {

@@ -22,6 +22,14 @@ func (d *Database) DatabaseList() []string {
 	return dbList
 }
 
+func (d *Database) DatabaseDriverType(name string) string {
+	if info, ok := d.DB[name]; ok {
+		return info.DBType
+	}
+
+	return ""
+}
+
 func (d *Database) Exec(ctx context.Context, name, query string) (service.Result, error) {
 	dbConn, ok := d.DB[name]
 	if !ok {

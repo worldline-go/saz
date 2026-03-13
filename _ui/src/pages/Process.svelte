@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import {
     requestProcesses,
     requestProcessTerminate,
@@ -15,6 +15,7 @@
     ArrowUp,
     ArrowDown,
     ChevronLeft,
+    Search,
   } from "@lucide/svelte";
   import type { process, processStatus } from "@/helper/model";
 
@@ -29,8 +30,14 @@
   let limit = $state(25);
   let offset = $state(0);
 
-  // Local search (client-side text filter on visible results)
-  let search = $state("");
+  // Dedicated filter inputs
+  let userFilter = $state("");
+  let dateFrom = $state("");
+  let dateTo = $state("");
+  let dbFilter = $state("");
+
+  // Raw server-side query (appended to the API request as-is)
+  let rawQuery = $state("");
 
   function buildParams(): ProcessQueryParams {
     const params: ProcessQueryParams = {
@@ -39,6 +46,11 @@
       offset,
     };
     if (statusFilter) params.status = statusFilter;
+    if (userFilter.trim()) params.user = userFilter.trim();
+    if (dateFrom.trim()) params.dateFrom = dateFrom.trim();
+    if (dateTo.trim()) params.dateTo = dateTo.trim();
+    if (dbFilter.trim()) params.database = dbFilter.trim();
+    if (rawQuery.trim()) params.rawQuery = rawQuery.trim();
     return params;
   }
 
@@ -112,21 +124,6 @@
     return new Date(date).toLocaleString();
   };
 
-  let filteredProcesses = $derived.by(() => {
-    if (!search.trim()) return processes;
-    const q = search.toLowerCase();
-    return processes.filter(
-      (p) =>
-        p.id.toLowerCase().includes(q) ||
-        p.status.toLowerCase().includes(q) ||
-        (p.info.note ?? "").toLowerCase().includes(q) ||
-        (p.info.description ?? "").toLowerCase().includes(q) ||
-        (p.info.query ?? "").toLowerCase().includes(q) ||
-        (p.user ?? "").toLowerCase().includes(q) ||
-        (p.info.error ?? "").toLowerCase().includes(q),
-    );
-  });
-
   const sortIcon = (field: string): "neutral" | "asc" | "desc" => {
     if (sortField !== field) return "neutral";
     return sortDir;
@@ -146,10 +143,15 @@
     // re-fetch when status filter changes (skip initial mount)
     statusFilter;
     if (initialized) {
-      offset = 0;
-      fetchProcesses();
+      untrack(() => {
+        offset = 0;
+        fetchProcesses();
+      });
     }
   });
+
+  const applyFilters = () => { offset = 0; fetchProcesses(); };
+  const filterKeydown = (e: KeyboardEvent) => { if (e.key === "Enter") applyFilters(); };
 
   onMount(() => {
     fetchProcesses().then(() => {
@@ -160,7 +162,7 @@
 
 <div class="flex flex-col h-full w-full overflow-hidden text-sm">
   <!-- Toolbar -->
-  <div class="border-b border-gray-300 flex items-center justify-between gap-2 px-3 h-10 shrink-0 bg-gray-100">
+  <div class="border-b border-gray-300 flex items-center justify-between gap-2 px-3 h-8 shrink-0 bg-gray-100">
     <div class="flex items-center gap-2">
       <span class="font-medium text-gray-700">Processes</span>
       <span class="border-l border-gray-300 h-4"></span>
@@ -173,14 +175,6 @@
           <option value={s.value}>{s.label}</option>
         {/each}
       </select>
-      <span class="border-l border-gray-300 h-4"></span>
-      <!-- Search -->
-      <input
-        type="text"
-        class="border-none bg-transparent text-sm hover:bg-white focus:bg-white h-8 px-2 w-56"
-        placeholder="Search..."
-        bind:value={search}
-      />
     </div>
     <div class="flex items-center">
       <button
@@ -192,6 +186,64 @@
         <RefreshCw class={loading ? "animate-spin" : ""} size={16} />
       </button>
     </div>
+  </div>
+  <!-- Filter row -->
+  <div class="border-b border-gray-200 flex items-center gap-3 px-3 h-9 shrink-0 bg-gray-50 text-xs text-gray-600">
+    <label class="flex items-center gap-1">
+      <span>User</span>
+      <input
+        type="text"
+        class="border border-gray-300 rounded bg-white h-6 px-1.5 w-28 text-xs"
+        placeholder="admin"
+        bind:value={userFilter}
+        onkeydown={filterKeydown}
+      />
+    </label>
+    <label class="flex items-center gap-1">
+      <span>From</span>
+      <input
+        type="date"
+        class="border border-gray-300 rounded bg-white h-6 px-1.5 text-xs"
+        bind:value={dateFrom}
+        onkeydown={filterKeydown}
+      />
+    </label>
+    <label class="flex items-center gap-1">
+      <span>To</span>
+      <input
+        type="date"
+        class="border border-gray-300 rounded bg-white h-6 px-1.5 text-xs"
+        bind:value={dateTo}
+        onkeydown={filterKeydown}
+      />
+    </label>
+    <label class="flex items-center gap-1">
+      <span>DB</span>
+      <input
+        type="text"
+        class="border border-gray-300 rounded bg-white h-6 px-1.5 w-28 text-xs"
+        placeholder="postgres"
+        bind:value={dbFilter}
+        onkeydown={filterKeydown}
+      />
+    </label>
+    <span class="border-l border-gray-300 h-4"></span>
+    <input
+      type="text"
+      class="border border-gray-300 rounded bg-white h-6 px-1.5 flex-1 min-w-0 text-xs font-mono"
+      placeholder="raw query"
+      title="Raw query appended to request (Enter to apply)"
+      bind:value={rawQuery}
+      onkeydown={filterKeydown}
+    />
+    <button
+      class="px-1.5 h-6 rounded hover:cursor-pointer hover:bg-gray-200 text-gray-500"
+      onclick={applyFilters}
+      disabled={loading}
+      title="Apply filters"
+    >
+      <Search size={12} />
+    </button>
   </div>
 
   <!-- Table -->
@@ -208,6 +260,8 @@
           </th>
           <th class="px-3 py-2">Note</th>
           <th class="px-3 py-2">Description</th>
+          <th class="px-3 py-2 w-28">Database</th>
+          <th class="px-3 py-2 w-24">Driver</th>
           <th class="px-3 py-2 w-28">
             <button class="flex items-center gap-1 hover:text-gray-800 hover:cursor-pointer" onclick={() => toggleSort("info.duration")}>
               Duration
@@ -232,12 +286,12 @@
         </tr>
       </thead>
       <tbody>
-        {#if filteredProcesses.length === 0 && !loading}
+        {#if processes.length === 0 && !loading}
           <tr>
-            <td colspan="10" class="text-gray-400 text-center py-10">No processes found</td>
+            <td colspan="12" class="text-gray-400 text-center py-10">No processes found</td>
           </tr>
         {/if}
-        {#each filteredProcesses as proc (proc.id)}
+        {#each processes as proc (proc.id)}
           {@const isExpanded = expandedIds.has(proc.id)}
           {@const hasDetail = proc.info.query || proc.info.error || (proc.info.cells && proc.info.cells.length > 0)}
           <tr
@@ -272,6 +326,16 @@
                 {proc.info.description || "-"}
               </div>
             </td>
+            <td class="px-3 py-2.5 max-w-28">
+              <div class="cell-truncate" title={proc.info.database}>
+                {proc.info.database || "-"}
+              </div>
+            </td>
+            <td class="px-3 py-2.5 max-w-24">
+              <div class="cell-truncate" title={proc.info.driver}>
+                {proc.info.driver || "-"}
+              </div>
+            </td>
             <td class="px-3 py-2.5 tabular-nums">
               {proc.info.duration || "-"}
             </td>
@@ -303,7 +367,7 @@
           </tr>
           {#if isExpanded}
             <tr class="border-b border-gray-200">
-              <td colspan="10" class="p-0">
+              <td colspan="12" class="p-0">
                 <div class="border-l-2 border-gray-300 ml-5 my-2">
                   {#if proc.info.error}
                     <div class="px-4 py-2 bg-red-50 text-red-700 text-sm">
@@ -324,6 +388,8 @@
                           <tr class="bg-gray-50 text-left text-gray-500 text-xs">
                             <th class="px-3 py-1.5 w-8">#</th>
                             <th class="px-3 py-1.5">Description</th>
+                            <th class="px-3 py-1.5 w-28">Database</th>
+                            <th class="px-3 py-1.5 w-24">Driver</th>
                             <th class="px-3 py-1.5 w-24">Status</th>
                             <th class="px-3 py-1.5 w-28">Duration</th>
                             <th class="px-3 py-1.5 w-20">Rows</th>
@@ -348,6 +414,8 @@
                                   <div class="mt-1 text-xs text-red-600">{cell.error}</div>
                                 {/if}
                               </td>
+                              <td class="px-3 py-1.5">{cell.database || "-"}</td>
+                              <td class="px-3 py-1.5">{cell.driver || "-"}</td>
                               <td class="px-3 py-1.5">
                                 <span class={["px-2 py-0.5 text-xs font-medium rounded", cellStatusColor]}>
                                   {cell.status}
@@ -373,7 +441,7 @@
   <!-- Pagination -->
   <div class="border-t border-gray-300 flex items-center justify-between px-3 h-10 shrink-0 bg-gray-100 text-sm text-gray-500">
     <div class="flex items-center gap-2">
-      <span>Showing {offset + 1}-{offset + filteredProcesses.length}</span>
+      <span>Showing {offset + 1}-{offset + processes.length}</span>
       <span class="border-l border-gray-300 h-4"></span>
       <label class="flex items-center gap-1">
         Per page

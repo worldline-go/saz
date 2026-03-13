@@ -2,7 +2,7 @@
   import Editor from "@/components/Editor.svelte";
   import { requestRun, requestRunTemplate, requestRunBackground } from "@/helper/call";
   import { confirmDangerousQuery } from "@/helper/sql";
-  import { storeInfo, storeOutput } from "@/store/store";
+  import { storeInfo, storeOutput, storeNotebookOutput } from "@/store/store";
   import { addToast } from "@/store/toast";
   import {
     Scan,
@@ -81,6 +81,7 @@
 
     addToast("Running cell...", "info");
     storeOutput.set(null);
+    storeNotebookOutput.set(null);
     let dependencyCells: Record<string, cellType> = {};
     if (cell.dependency?.enabled) {
       cell.dependency.names.forEach((name) => {
@@ -299,11 +300,10 @@
       </div>
     </div>
     <div class="flex justify-between">
-      <div class="overflow-y-auto w-full">
+      <div class="overflow-y-auto w-full bg-white">
         <Editor
           bind:value={cell.content}
           collapse={cell.collapsed}
-          class="bg-white"
         />
       </div>
       {#if preview}

@@ -261,14 +261,14 @@ func (s *Service) Run(ctx context.Context, cell *Cell, values map[string]any, de
 	return s.db.Exec(ctx, cell.DBType, content)
 }
 
-func (s *Service) RunNote(ctx context.Context, notePath string, values map[string]any) (cellInfos []ProcessCellInfo, err error) {
+func (s *Service) RunNote(ctx context.Context, notePath string, values map[string]any, withResults bool) (cellInfos []ProcessCellInfo, cellResults []CellResult, err error) {
 	if notePath == "" {
-		return nil, fmt.Errorf("note path is empty; %w", ErrBadRequest)
+		return nil, nil, fmt.Errorf("note path is empty; %w", ErrBadRequest)
 	}
 
 	note, err := s.store.GetWithPath(ctx, notePath)
 	if err != nil {
-		return nil, fmt.Errorf("get note by path %s: %w", notePath, err)
+		return nil, nil, fmt.Errorf("get note by path %s: %w", notePath, err)
 	}
 
 	// get all dependencies
@@ -300,16 +300,21 @@ func (s *Service) RunNote(ctx context.Context, notePath string, values map[strin
 		cellInfo := ProcessCellInfo{
 			Description: note.Content.Cells[i].Description.V,
 			Query:       note.Content.Cells[i].Content,
+			Database:    note.Content.Cells[i].DBType,
+			Driver:      s.db.DatabaseDriverType(note.Content.Cells[i].DBType),
 		}
 
 		if !note.Content.Cells[i].Enabled.V {
 			logi.Ctx(ctx).Info("cell is disabled, skipping execution", logCell)
 			cellInfo.Status = "skipped"
 			cellInfos = append(cellInfos, cellInfo)
+			if withResults {
+				cellResults = append(cellResults, CellResult{})
+			}
 			continue
 		}
 
-		if _, ok := dependency[note.Content.Cells[i].Path.V]; !ok {
+		if _, ok := dependency[note.Content.Cells[i].Path.V]; !ok && !withResults {
 			note.Content.Cells[i].Result.V = false
 		}
 
@@ -321,15 +326,24 @@ func (s *Service) RunNote(ctx context.Context, notePath string, values map[strin
 			cellInfo.Status = "failed"
 			cellInfo.Error = runErr.Error()
 			cellInfos = append(cellInfos, cellInfo)
-			return cellInfos, fmt.Errorf("%s; %w", note.Content.Cells[i].Description.V, runErr)
+			if withResults {
+				cellResults = append(cellResults, CellResult{})
+			}
+			return cellInfos, cellResults, fmt.Errorf("%s; %w", note.Content.Cells[i].Description.V, runErr)
 		}
 
 		cellInfo.Status = "completed"
 		cellInfo.RowsAffected = result.RowsAffected()
 		cellInfos = append(cellInfos, cellInfo)
+		if withResults {
+			cellResults = append(cellResults, CellResult{
+				Columns: result.Columns(),
+				Rows:    result.Rows(),
+			})
+		}
 	}
 
-	return cellInfos, nil
+	return cellInfos, cellResults, nil
 }
 
 func (s *Service) RunNoteCell(ctx context.Context, notePath string, cellPath string, values map[string]any) (result Result, err error) {
@@ -424,6 +438,33 @@ func (s *Service) RunNoteCell(ctx context.Context, notePath string, cellPath str
 
 func (s *Service) DatabaseList() []string {
 	return s.db.DatabaseList()
+}
+
+func (s *Service) DatabaseDriverType(name string) string {
+	return s.db.DatabaseDriverType(name)
+}
+
+// GetNoteCellDBInfo returns the database name and driver type for a specific cell in a note.
+func (s *Service) GetNoteCellDBInfo(ctx context.Context, notePath string, cellPath string) (database string, driver string) {
+	note, err := s.store.GetWithPath(ctx, notePath)
+	if err != nil {
+		return "", ""
+	}
+
+	for i := range note.Content.Cells {
+		if note.Content.Cells[i].Path.V == cellPath {
+			db := note.Content.Cells[i].DBType
+			return db, s.db.DatabaseDriverType(db)
+		}
+	}
+
+	cellNumber, err := strconv.Atoi(cellPath)
+	if err != nil || cellNumber < 1 || cellNumber > len(note.Content.Cells) {
+		return "", ""
+	}
+
+	db := note.Content.Cells[cellNumber-1].DBType
+	return db, s.db.DatabaseDriverType(db)
 }
 
 func (s *Service) GetNote(ctx context.Context, id string) (*Note, error) {

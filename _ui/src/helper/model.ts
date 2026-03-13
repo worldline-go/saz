@@ -95,6 +95,8 @@ export type processStatus = "running" | "completed" | "failed" | "terminated";
 export type processCellInfo = {
   description?: string;
   query?: string;
+  database?: string;
+  driver?: string;
   status: string;
   duration?: string;
   error?: string;
@@ -105,6 +107,8 @@ export type processInfo = {
   note?: string;
   query?: string;
   description?: string;
+  database?: string;
+  driver?: string;
   rows_affected?: number;
   error?: string;
   duration?: string;

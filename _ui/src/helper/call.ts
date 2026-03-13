@@ -16,7 +16,7 @@ export const requestRunTemplate = (content: string, data: any) => {
 }
 
 export const requestRunNotebook = (path: string) => {
-  return axios.post(`./api/v1/run/${path}`);
+  return axios.post(`./api/v1/run/${path}?output=1`);
 };
 
 export const requestInfo = async () => {
@@ -73,6 +73,11 @@ export type ProcessQueryParams = {
   limit?: number;
   offset?: number;
   status?: string;
+  user?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  database?: string;
+  rawQuery?: string;
 };
 
 /**
@@ -86,6 +91,11 @@ function buildProcessQuery(params?: ProcessQueryParams): string {
   if (params.limit != null) parts.push(`_limit=${params.limit}`);
   if (params.offset != null) parts.push(`_offset=${params.offset}`);
   if (params.status) parts.push(`status=${encodeURIComponent(params.status)}`);
+  if (params.user) parts.push(`user[ilike]=${encodeURIComponent(`%${params.user}%`)}`);
+  if (params.dateFrom) parts.push(`created_at[gte]=${encodeURIComponent(params.dateFrom)}`);
+  if (params.dateTo) parts.push(`created_at[lte]=${encodeURIComponent(params.dateTo)}`);
+  if (params.database) parts.push(`info[kv]=${encodeURIComponent(JSON.stringify({ database: params.database }))}`);
+  if (params.rawQuery) parts.push(params.rawQuery);
   return parts.length ? `?${parts.join("&")}` : "";
 }
 

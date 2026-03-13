@@ -11,7 +11,7 @@
     Trash,
   } from "@lucide/svelte";
   import type { cell, notebook } from "@/helper/model";
-  import { storeInfo, storeNoteIds, storeOutput } from "@/store/store";
+  import { storeInfo, storeNoteIds, storeOutput, storeNotebookOutput } from "@/store/store";
   import { ulid } from "ulid";
   import { reorder, useSortable } from "@/helper/sort.svelte";
   import {
@@ -59,12 +59,17 @@
   const playNotebook = (path: string) => {
     addToast("Running notebook...", "info");
     storeOutput.set(null);
+    storeNotebookOutput.set(null);
     requestRunNotebook(path)
-      .then(() => {
-        storeOutput.set(null);
+      .then((response) => {
+        const cells = response.data?.data;
+        if (cells && Array.isArray(cells)) {
+          storeNotebookOutput.set(cells);
+        }
         addToast("Notebook run successfully", "info");
       })
       .catch((error) => {
+        storeNotebookOutput.set(null);
         if (error.response) {
           storeOutput.set({
             columns: ["message", "error"],

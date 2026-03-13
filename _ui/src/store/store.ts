@@ -15,7 +15,18 @@ export type QueryOutput = {
   duration?: string;
 }
 
+export type NotebookCellOutput = {
+  description?: string;
+  columns?: string[];
+  rows?: string[][];
+  rows_affected?: number;
+  duration?: string;
+  status: string;
+  error?: string;
+};
+
 export const storeNavbar = writable(navbar);
 export const storeInfo = writable<info | null>(null);
 export const storeOutput = writable<QueryOutput | null>(null);
+export const storeNotebookOutput = writable<NotebookCellOutput[] | null>(null);
 export const storeNoteIds = writable<idName[]>(noteIds);

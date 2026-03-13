@@ -126,6 +126,8 @@ type ProcessInfo struct {
 	Note         string            `json:"note,omitempty"`
 	Query        string            `json:"query,omitempty"`
 	Description  string            `json:"description,omitempty"`
+	Database     string            `json:"database,omitempty"`
+	Driver       string            `json:"driver,omitempty"`
 	RowsAffected int64             `json:"rows_affected,omitempty"`
 	Error        string            `json:"error,omitempty"`
 	Duration     string            `json:"duration,omitempty"`
@@ -135,10 +137,19 @@ type ProcessInfo struct {
 type ProcessCellInfo struct {
 	Description  string `json:"description,omitempty"`
 	Query        string `json:"query,omitempty"`
+	Database     string `json:"database,omitempty"`
+	Driver       string `json:"driver,omitempty"`
 	Status       string `json:"status"`
 	Duration     string `json:"duration,omitempty"`
 	Error        string `json:"error,omitempty"`
 	RowsAffected int64  `json:"rows_affected,omitempty"`
+}
+
+// CellResult holds query result data for a single cell execution.
+// Returned to the HTTP caller but NOT stored in the process log.
+type CellResult struct {
+	Columns []string
+	Rows    [][]any
 }
 
 // /////////////////////////////////////////////
@@ -166,6 +177,7 @@ type Result interface {
 
 type Database interface {
 	DatabaseList() []string
+	DatabaseDriverType(name string) string
 
 	Query(ctx context.Context, name, query string, limit int64) (Result, error)
 	Exec(ctx context.Context, name, query string) (Result, error)

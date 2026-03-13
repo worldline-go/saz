@@ -38,6 +38,8 @@ func (s *Server) run(c *ada.Context) error {
 	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
 		Query:       cell.Cell.Content,
 		Description: cell.Cell.Description.V,
+		Database:    cell.Cell.DBType,
+		Driver:      s.service.DatabaseDriverType(cell.Cell.DBType),
 	}, cancel)
 	if err != nil {
 		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{
@@ -119,6 +121,8 @@ func (s *Server) runBackground(c *ada.Context) error {
 	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
 		Query:       cell.Cell.Content,
 		Description: cell.Cell.Description.V,
+		Database:    cell.Cell.DBType,
+		Driver:      s.service.DatabaseDriverType(cell.Cell.DBType),
 	}, cancel)
 	if err != nil {
 		cancel()
@@ -169,6 +173,7 @@ func (s *Server) runNote(c *ada.Context) error {
 	defer cancel()
 
 	noteName := c.Request.PathValue("note")
+	withResults := c.Request.URL.Query().Get("output") != ""
 
 	values, err := getValuesFromRequest(c.Request)
 	if err != nil {
@@ -191,7 +196,7 @@ func (s *Server) runNote(c *ada.Context) error {
 
 	start := time.Now()
 
-	cellInfos, err := s.service.RunNote(ctx, noteName, values)
+	cellInfos, cellResults, err := s.service.RunNote(ctx, noteName, values, withResults)
 	if err != nil {
 		s.service.FailProcessWithCells(baseCtx, pid, err, time.Since(start), cellInfos)
 
@@ -217,8 +222,30 @@ func (s *Server) runNote(c *ada.Context) error {
 
 	s.service.CompleteProcessWithCells(baseCtx, pid, 0, time.Since(start), cellInfos)
 
+	if !withResults {
+		return c.SetStatus(http.StatusOK).SendJSON(Response{
+			Message: "Note executed successfully",
+		})
+	}
+
+	responseCells := make([]ResponseNoteCell, len(cellInfos))
+	for i, ci := range cellInfos {
+		responseCells[i] = ResponseNoteCell{
+			Description:  ci.Description,
+			RowsAffected: ci.RowsAffected,
+			Duration:     ci.Duration,
+			Status:       ci.Status,
+			Error:        ci.Error,
+		}
+		if i < len(cellResults) {
+			responseCells[i].Columns = cellResults[i].Columns
+			responseCells[i].Rows = cellResults[i].Rows
+		}
+	}
+
 	return c.SetStatus(http.StatusOK).SendJSON(Response{
 		Message: "Note executed successfully",
+		Data:    responseCells,
 	})
 }
 
@@ -238,10 +265,14 @@ func (s *Server) runNoteCell(c *ada.Context) error {
 		})
 	}
 
+	dbName, dbDriver := s.service.GetNoteCellDBInfo(baseCtx, noteName, cellPath)
+
 	// Create process record
 	pid, err := s.service.CreateProcess(baseCtx, service.ProcessInfo{
 		Note:        noteName,
 		Description: cellPath,
+		Database:    dbName,
+		Driver:      dbDriver,
 	}, cancel)
 	if err != nil {
 		return c.SetStatus(http.StatusInternalServerError).SendJSON(Response{

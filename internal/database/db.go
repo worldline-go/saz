@@ -24,6 +24,7 @@ type Database struct {
 type Info struct {
 	DB          *sql.DB
 	PlaceHolder string
+	DBType      string
 }
 
 func (d *Database) Close() {
@@ -52,6 +53,7 @@ func Connect(ctx context.Context, cfg map[string]config.Database) (*Database, er
 		db.DB[name] = &Info{
 			DB:          dbConn,
 			PlaceHolder: PlaceHolder(dbConfig.DBType),
+			DBType:      dbConfig.DBType,
 		}
 	}
 

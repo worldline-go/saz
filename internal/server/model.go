@@ -23,6 +23,16 @@ type ResponseBackground struct {
 	Message string `json:"message"`
 }
 
+type ResponseNoteCell struct {
+	Description  string   `json:"description,omitempty"`
+	Columns      []string `json:"columns,omitempty"`
+	Rows         [][]any  `json:"rows,omitempty"`
+	RowsAffected int64    `json:"rows_affected,omitempty"`
+	Duration     string   `json:"duration,omitempty"`
+	Status       string   `json:"status"`
+	Error        string   `json:"error,omitempty"`
+}
+
 type RenderRequest struct {
 	Content string `json:"content"`
 	Data    any    `json:"data"`

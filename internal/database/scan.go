@@ -35,15 +35,9 @@ func ScanSliceWithValues(columnsLen int, r *sql.Rows, valueTypes []any) ([]any, 
 		return nil, fmt.Errorf("values length %d does not match columns length %d", len(valueTypes), columnsLen)
 	}
 
-	// Each row must own its scan destinations. A shallow slice copy would
-	// retain shared pointers and overwrite earlier rows waiting in a batch.
-	values := make([]any, columnsLen)
-	for i, valueType := range valueTypes {
-		t := reflect.TypeOf(valueType)
-		if t == nil || t.Kind() != reflect.Pointer {
-			return nil, fmt.Errorf("scan destination for column %d must be a pointer", i)
-		}
-		values[i] = reflect.New(t.Elem()).Interface()
+	values, err := newScanValues(valueTypes)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := r.Scan(values...); err != nil {
@@ -56,6 +50,42 @@ func ScanSliceWithValues(columnsLen int, r *sql.Rows, valueTypes []any) ([]any, 
 		}
 	}
 
+	return values, nil
+}
+
+// Each row must own its scan destinations. A shallow slice copy would retain
+// shared pointers and overwrite earlier rows waiting in a batch. Allocate the
+// types produced by GetType directly; reflection is only a compatibility fallback.
+func newScanValues(valueTypes []any) ([]any, error) {
+	values := make([]any, len(valueTypes))
+	for i, valueType := range valueTypes {
+		switch valueType.(type) {
+		case *any:
+			values[i] = new(any)
+		case *string:
+			values[i] = new(string)
+		case *bool:
+			values[i] = new(bool)
+		case *types.Decimal:
+			values[i] = new(types.Decimal)
+		case *types.NullDecimal:
+			values[i] = new(types.NullDecimal)
+		case *types.Time:
+			values[i] = new(types.Time)
+		case *types.Null[types.Time]:
+			values[i] = new(types.Null[types.Time])
+		case *types.Null[string]:
+			values[i] = new(types.Null[string])
+		case *types.Null[bool]:
+			values[i] = new(types.Null[bool])
+		default:
+			t := reflect.TypeOf(valueType)
+			if t == nil || t.Kind() != reflect.Pointer {
+				return nil, fmt.Errorf("scan destination for column %d must be a pointer", i)
+			}
+			values[i] = reflect.New(t.Elem()).Interface()
+		}
+	}
 	return values, nil
 }
 

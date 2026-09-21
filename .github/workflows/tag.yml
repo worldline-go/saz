@@ -12,11 +12,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/rytsh/dock/build/go:1.26.1
+      image: ghcr.io/rytsh/dock/build/go:1.27.1
       options: --privileged
     services:
       docker:
-        image: docker:24-dind
+        image: docker:dind
         options: --privileged
     steps:
       - uses: actions/checkout@v4

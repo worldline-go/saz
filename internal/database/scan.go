@@ -4,10 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
-	"slices"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/greatcloak/decimal"
 	"github.com/spf13/cast"
 	"github.com/worldline-go/saz/internal/render"
 	"github.com/worldline-go/saz/internal/service"
@@ -36,7 +35,16 @@ func ScanSliceWithValues(columnsLen int, r *sql.Rows, valueTypes []any) ([]any, 
 		return nil, fmt.Errorf("values length %d does not match columns length %d", len(valueTypes), columnsLen)
 	}
 
-	values := slices.Clone(valueTypes)
+	// Each row must own its scan destinations. A shallow slice copy would
+	// retain shared pointers and overwrite earlier rows waiting in a batch.
+	values := make([]any, columnsLen)
+	for i, valueType := range valueTypes {
+		t := reflect.TypeOf(valueType)
+		if t == nil || t.Kind() != reflect.Pointer {
+			return nil, fmt.Errorf("scan destination for column %d must be a pointer", i)
+		}
+		values[i] = reflect.New(t.Elem()).Interface()
+	}
 
 	if err := r.Scan(values...); err != nil {
 		return nil, err

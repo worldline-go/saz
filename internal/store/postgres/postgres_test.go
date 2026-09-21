@@ -1,9 +1,11 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/rakunlabs/query"
 	"github.com/rakunlabs/tummy"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -12,6 +14,68 @@ import (
 	"github.com/worldline-go/test/container/containerpostgres"
 	"github.com/worldline-go/test/utils/dbutils"
 )
+
+func (s *PostgresSuite) TestProcessLeasesAndTerminalStates() {
+	ctx := s.T().Context()
+	store, err := conn(&config.StorePostgres{}, s.container.Sql())
+	require.NoError(s.T(), err)
+	s.T().Cleanup(func() { _, err := s.container.Sql().Exec("TRUNCATE process"); require.NoError(s.T(), err) })
+	first, err := service.New(nil, store, nil)
+	require.NoError(s.T(), err)
+	second, err := service.New(nil, store, nil)
+	require.NoError(s.T(), err)
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	pid, err := first.CreateProcess(service.ContextWithUser(ctx, "owner"), service.ProcessInfo{Note: "keep info"}, cancel)
+	require.NoError(s.T(), err)
+	get := func(id string) service.Process {
+		items, err := store.GetProcess(ctx, query.New().AddWhere(query.NewExpressionCmp(query.OperatorEq, "id", id)))
+		require.NoError(s.T(), err)
+		require.Len(s.T(), items, 1)
+		return items[0]
+	}
+	original := get(pid)
+	second.CleanupStaleProcesses(ctx)
+	require.Equal(s.T(), service.ProcessStatusRunning, get(pid).Status, "another instance must not fail live work")
+
+	for _, id := range []string{"abandoned", "renewed"} {
+		require.NoError(s.T(), store.SaveProcess(ctx, &service.Process{ID: id, Status: service.ProcessStatusRunning, Info: service.ProcessInfo{Note: "keep info"}}))
+	}
+	_, err = s.container.Sql().ExecContext(ctx, "UPDATE process SET updated_at = NOW() - INTERVAL '5 minutes' WHERE id IN ('abandoned', 'renewed')")
+	require.NoError(s.T(), err)
+	require.NoError(s.T(), store.HeartbeatProcesses(ctx, []string{"renewed"}))
+	second.CleanupStaleProcesses(ctx)
+	require.Equal(s.T(), service.ProcessStatusRunning, get("renewed").Status)
+	stale := get("abandoned")
+	require.Equal(s.T(), service.ProcessStatusFailed, stale.Status)
+	require.Equal(s.T(), "process heartbeat expired", stale.Info.Error)
+	require.Equal(s.T(), "keep info", stale.Info.Note)
+	// A heartbeat or late worker completion must not resurrect an expired lease.
+	require.NoError(s.T(), store.HeartbeatProcesses(ctx, []string{"abandoned"}))
+	stale.Status = service.ProcessStatusCompleted
+	require.ErrorIs(s.T(), store.SaveProcess(ctx, &stale), service.ErrBadRequest)
+	require.Equal(s.T(), service.ProcessStatusFailed, get("abandoned").Status)
+
+	// An instance without the local worker cannot claim cancellation succeeded.
+	require.ErrorIs(s.T(), second.ActionProcessID(ctx, pid, service.ProcessActionRequest{Action: service.ProcessActionTerminate}), service.ErrBadRequest)
+	require.Equal(s.T(), service.ProcessStatusRunning, get(pid).Status)
+	require.NoError(s.T(), first.ActionProcessID(ctx, pid, service.ProcessActionRequest{Action: service.ProcessActionTerminate}))
+	require.ErrorIs(s.T(), workerCtx.Err(), context.Canceled)
+	first.FailProcess(ctx, pid, context.Canceled, time.Second)
+	first.CompleteProcess(ctx, pid, 42, time.Second)
+	terminated := get(pid)
+	require.Equal(s.T(), service.ProcessStatusTerminated, terminated.Status)
+	require.Equal(s.T(), original.CreatedAt, terminated.CreatedAt)
+	require.Equal(s.T(), original.User, terminated.User)
+
+	// History retention must never remove a still-running process.
+	_, err = s.container.Sql().ExecContext(ctx, "UPDATE process SET created_at = NOW() - INTERVAL '1 year'")
+	require.NoError(s.T(), err)
+	deleted, err := store.DeleteProcessBefore(ctx, time.Now().Add(-time.Hour))
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), int64(2), deleted)
+	require.Equal(s.T(), service.ProcessStatusRunning, get("renewed").Status)
+}
 
 type PostgresSuite struct {
 	suite.Suite

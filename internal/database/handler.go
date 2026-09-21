@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"iter"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -202,17 +203,11 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 		}
 	}
 
-	var counter int64
+	var counter, skipped int64
 
 	var savePoint string
 	if skipError.Enabled {
 		savePoint = fmt.Sprintf("savepoint_%s", ulid.Make())
-
-		// if batchCount > 1 {
-		// 	logi.Ctx(ctx).Info("batch size cannot be use with error skip reduced to 1")
-
-		// 	batchCount = 1
-		// }
 	}
 
 	if batchCount <= 0 {
@@ -234,43 +229,13 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 
 	batchHolder := NewBatch(batchCount)
 
-	lastTurn := false
-	for row, err := range rows {
-		if err != nil {
-			return nil, fmt.Errorf("iterate rows: %w", err)
-		}
-
-		if len(row) == 0 {
-			if batchCount == 1 {
-				continue
-			}
-
-			lastTurn = true
-		}
-
-		if batchCount > 1 {
-			if len(row) != 0 {
-				batchHolder.AddRow(row)
-			}
-
-			if !lastTurn && !batchHolder.IsFull() {
-				continue
-			}
-
-			size := batchHolder.Size()
-			if size == 0 {
-				continue
-			}
-
-			if size != batchCount {
-				query = queryBuilderFunc(size)
-			}
-
-			row = batchHolder.Rows()
-		}
-
+	// Always restore the transaction before inspecting an insert failure.
+	// Savepoint failures must abort the transfer, never be treated as skipped rows.
+	execute := func(query string, row []any) (insertErr, controlErr error) {
 		if skipError.Enabled {
-			tx.ExecContext(ctx, "SAVEPOINT "+savePoint)
+			if _, err := tx.ExecContext(ctx, "SAVEPOINT "+savePoint); err != nil {
+				return nil, fmt.Errorf("create savepoint: %w", err)
+			}
 		}
 
 		var err error
@@ -280,38 +245,89 @@ func (d *Database) IterSet(ctx context.Context, name, table string, wipe bool, s
 			_, err = tx.ExecContext(ctx, query, row...)
 		}
 
-		if err != nil {
-			if skipError.Enabled {
-				if strings.Contains(err.Error(), skipError.Message) {
-					tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+savePoint)
-					batchHolder.Reset()
-					continue
+		if skipError.Enabled {
+			if err != nil {
+				if _, rollbackErr := tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+savePoint); rollbackErr != nil {
+					return err, fmt.Errorf("rollback to savepoint after %v: %w", err, rollbackErr)
 				}
 			}
-
-			return nil, fmt.Errorf("insert row: %w; query %s, row %v", err, query, row)
+			if _, releaseErr := tx.ExecContext(ctx, "RELEASE SAVEPOINT "+savePoint); releaseErr != nil {
+				return err, fmt.Errorf("release savepoint: %w", releaseErr)
+			}
 		}
+		return err, nil
+	}
 
-		if skipError.Enabled {
-			tx.ExecContext(ctx, "RELEASE SAVEPOINT "+savePoint)
+	flush := func() error {
+		if batchHolder.Size() == 0 {
+			return nil
 		}
-
-		if batchCount == 1 {
-			counter++
-		} else {
+		defer batchHolder.Reset()
+		insertErr, controlErr := execute(queryBuilderFunc(batchHolder.Size()), batchHolder.Rows())
+		if controlErr != nil {
+			return controlErr
+		}
+		if insertErr == nil {
 			counter += int64(batchHolder.Size())
-			batchHolder.Reset()
+			return nil
 		}
+		if !skipError.Enabled || !strings.Contains(insertErr.Error(), skipError.Message) {
+			return fmt.Errorf("insert batch: %w", insertErr)
+		}
+		if batchHolder.Size() == 1 {
+			skipped++
+			return nil
+		}
+		// A failed multi-row insert has been rolled back. Retry every row so
+		// one rejected value does not discard its valid neighbours.
+		for _, row := range batchHolder.rows {
+			insertErr, controlErr := execute(queryBuilderFunc(1), row)
+			if controlErr != nil {
+				return controlErr
+			}
+			if insertErr != nil {
+				if !strings.Contains(insertErr.Error(), skipError.Message) {
+					return fmt.Errorf("insert row: %w", insertErr)
+				}
+				skipped++
+				continue
+			}
+			counter++
+		}
+		return nil
+	}
+	for row, err := range rows {
+		if err != nil {
+			return nil, fmt.Errorf("iterate rows: %w", err)
+		}
+		if len(row) == 0 {
+			continue
+		}
+		if len(row) != len(columns) {
+			return nil, fmt.Errorf("row has %d values for %d columns", len(row), len(columns))
+		}
+		batchHolder.AddRow(row)
+		if batchHolder.IsFull() {
+			if err := flush(); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err := flush(); err != nil {
+		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit transaction on database %s: %w", name, err)
 	}
+	if skipped > 0 {
+		slog.WarnContext(ctx, "transfer skipped rejected rows", "database", name, "table", table, "skipped_rows", skipped, "inserted_rows", counter)
+	}
 
 	return &Result{
-		columns: []string{"status"},
+		columns: []string{"status", "skipped_rows"},
 		rows: [][]any{
-			{"success"},
+			{"success", skipped},
 		},
 		duration:     time.Since(start),
 		rowsAffected: counter,

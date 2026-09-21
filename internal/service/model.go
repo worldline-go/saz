@@ -163,6 +163,8 @@ type Storer interface {
 
 	GetProcess(ctx context.Context, q *query.Query) ([]Process, error)
 	SaveProcess(ctx context.Context, process *Process) error
+	HeartbeatProcesses(ctx context.Context, ids []string) error
+	FailStaleProcesses(ctx context.Context, staleAfter time.Duration) (int64, error)
 	DeleteProcessBefore(ctx context.Context, before time.Time) (int64, error)
 }
 

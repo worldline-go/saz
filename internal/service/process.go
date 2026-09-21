@@ -146,11 +146,10 @@ func (s *Service) ActionProcessID(ctx context.Context, pid string, action Proces
 		}
 
 		// Cancel the running context
-		s.CancelProcess(pid)
-
-		process.Status = ProcessStatusTerminated
-
-		return s.store.SaveProcess(ctx, process)
+		if !s.CancelProcess(pid) {
+			return fmt.Errorf("process %s could not be cancelled; %w", pid, ErrBadRequest)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported action %s; %w", action, ErrBadRequest)
 	}
@@ -167,7 +166,14 @@ func (s *Service) StartProcessCleanup(ctx context.Context, retention, interval t
 			slog.Error("process cleanup: failed to acquire lock", "error", err)
 			return
 		}
-		defer s.alan.Unlock("process_cleanup")
+		defer func() {
+			// Cleanup normally exits on cancellation, so release with a fresh deadline.
+			unlockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			if err := s.alan.Unlock(unlockCtx, "process_cleanup"); err != nil {
+				slog.Error("process cleanup: failed to release lock", "error", err)
+			}
+		}()
 		slog.Info("process cleanup: acquired distributed lock")
 	}
 
@@ -200,26 +206,46 @@ func (s *Service) cleanupOldProcesses(ctx context.Context, retention time.Durati
 	}
 }
 
-// CleanupStaleProcesses marks all running processes as failed on startup.
-func (s *Service) CleanupStaleProcesses(ctx context.Context) {
-	q := query.New().AddWhere(query.NewExpressionCmp(query.OperatorEq, "status", string(ProcessStatusRunning)))
+const (
+	processHeartbeatInterval = 15 * time.Second
+	processStaleAfter        = 2 * time.Minute
+)
 
-	processes, err := s.store.GetProcess(ctx, q)
-	if err != nil {
-		slog.Error("cleanup stale processes: get processes", "error", err)
-		return
-	}
-
-	for i := range processes {
-		processes[i].Status = ProcessStatusFailed
-		processes[i].Info.Error = "server restarted"
-
-		if err := s.store.SaveProcess(ctx, &processes[i]); err != nil {
-			slog.Error("cleanup stale processes: save process", "pid", processes[i].ID, "error", err)
+// StartProcessMaintenance renews local process leases and expires abandoned ones.
+// It runs independently of history-retention cleanup and peer discovery.
+func (s *Service) StartProcessMaintenance(ctx context.Context) {
+	ticker := time.NewTicker(processHeartbeatInterval)
+	defer ticker.Stop()
+	for {
+		maintenanceCtx, cancel := context.WithTimeout(ctx, processHeartbeatInterval)
+		s.cancelMu.Lock()
+		ids := make([]string, 0, len(s.cancelMap))
+		for id := range s.cancelMap {
+			ids = append(ids, id)
+		}
+		s.cancelMu.Unlock()
+		if err := s.store.HeartbeatProcesses(maintenanceCtx, ids); err != nil {
+			slog.Error("process heartbeat failed", "error", err)
+		} else {
+			s.CleanupStaleProcesses(maintenanceCtx)
+		}
+		cancel()
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 		}
 	}
+}
 
-	if len(processes) > 0 {
-		slog.Info("cleaned up stale processes", "count", len(processes))
+// CleanupStaleProcesses only fails processes whose lease has expired.
+func (s *Service) CleanupStaleProcesses(ctx context.Context) {
+	count, err := s.store.FailStaleProcesses(ctx, processStaleAfter)
+	if err != nil {
+		slog.Error("cleanup stale processes", "error", err)
+		return
+	}
+	if count > 0 {
+		slog.Info("cleaned up stale processes", "count", count)
 	}
 }

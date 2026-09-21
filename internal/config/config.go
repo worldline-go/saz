@@ -11,7 +11,12 @@ import (
 	"github.com/rakunlabs/logi"
 	"github.com/worldline-go/tell"
 
+	_ "github.com/rakunlabs/chu/loader/external/loaderawssecrets"
+	_ "github.com/rakunlabs/chu/loader/external/loaderawsssm"
+	_ "github.com/rakunlabs/chu/loader/external/loaderazurekeyvault"
 	_ "github.com/rakunlabs/chu/loader/external/loaderconsul"
+	_ "github.com/rakunlabs/chu/loader/external/loadergcpparameter"
+	_ "github.com/rakunlabs/chu/loader/external/loadergcpsecret"
 	_ "github.com/rakunlabs/chu/loader/external/loadervault"
 )
 

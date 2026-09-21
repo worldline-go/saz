@@ -24,6 +24,8 @@ type Service struct {
 	alan *alan.Alan
 }
 
+const peerMessageType = "process"
+
 // peerMessage is the message format exchanged between instances via alan.
 type peerMessage struct {
 	Action string `json:"action"`
@@ -50,6 +52,7 @@ func New(db Database, store Storer, cfg *alan.Config) (*Service, error) {
 		}
 
 		s.alan = a
+		a.Handle(peerMessageType, s.handlePeerMessage)
 		slog.Info("alan distributed communication enabled", "dns_addr", cfg.DNSAddr, "port", cfg.Port)
 	}
 
@@ -63,7 +66,7 @@ func (s *Service) StartAlan(ctx context.Context) error {
 		return nil
 	}
 
-	return s.alan.Start(ctx, s.handlePeerMessage)
+	return s.alan.Start(ctx)
 }
 
 // StopAlan gracefully stops alan peer communication.
@@ -76,7 +79,7 @@ func (s *Service) StopAlan() error {
 }
 
 // handlePeerMessage processes incoming messages from alan peers.
-func (s *Service) handlePeerMessage(_ context.Context, msg alan.Message) {
+func (s *Service) handlePeerMessage(ctx context.Context, msg alan.Message) {
 	if !msg.IsRequest() {
 		return
 	}
@@ -85,22 +88,22 @@ func (s *Service) handlePeerMessage(_ context.Context, msg alan.Message) {
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		slog.Error("alan: failed to unmarshal peer message", "error", err)
 		resp, _ := json.Marshal(peerResponse{OK: false, Error: "invalid message"})
-		s.alan.Reply(msg, resp)
+		s.alan.Reply(ctx, msg, resp)
 		return
 	}
 
 	switch req.Action {
 	case "terminate":
-		found := s.cancelProcessLocal(req.PID)
+		found := s.cancelProcessLocal(ctx, req.PID)
 		resp, _ := json.Marshal(peerResponse{OK: found})
-		s.alan.Reply(msg, resp)
+		s.alan.Reply(ctx, msg, resp)
 
 		if found {
 			slog.Info("alan: terminated process from peer request", "pid", req.PID)
 		}
 	default:
 		resp, _ := json.Marshal(peerResponse{OK: false, Error: "unknown action"})
-		s.alan.Reply(msg, resp)
+		s.alan.Reply(ctx, msg, resp)
 	}
 }
 
@@ -115,8 +118,11 @@ func (s *Service) RegisterCancel(pid string, cancel context.CancelFunc) {
 // If not found locally and alan is configured, broadcasts to peers.
 // Returns true if a cancel function was found and invoked (locally or on a peer).
 func (s *Service) CancelProcess(pid string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	// Fast path: try local first
-	if s.cancelProcessLocal(pid) {
+	if s.cancelProcessLocal(ctx, pid) {
 		return true
 	}
 
@@ -127,10 +133,7 @@ func (s *Service) CancelProcess(pid string) bool {
 
 	req, _ := json.Marshal(peerMessage{Action: "terminate", PID: pid})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	replies, err := s.alan.SendAndWaitReply(ctx, req)
+	replies, err := s.alan.SendAndWaitReply(ctx, peerMessageType, req)
 	if err != nil {
 		slog.Error("alan: failed to broadcast terminate", "pid", pid, "error", err)
 		return false
@@ -151,10 +154,27 @@ func (s *Service) CancelProcess(pid string) bool {
 }
 
 // cancelProcessLocal invokes and removes the cancel function from the local map only.
-func (s *Service) cancelProcessLocal(pid string) bool {
+func (s *Service) cancelProcessLocal(ctx context.Context, pid string) bool {
+	ctx, stop := context.WithTimeout(ctx, 5*time.Second)
+	defer stop()
 	s.cancelMu.Lock()
 	defer s.cancelMu.Unlock()
 	if cancel, ok := s.cancelMap[pid]; ok {
+		// Persist the terminal state before cancellation wakes the worker.
+		// Holding cancelMu prevents its completion path from overtaking us.
+		process, err := s.GetProcessID(ctx, pid)
+		if err != nil {
+			slog.Error("cancel process: get process", "pid", pid, "error", err)
+			return false
+		}
+		if process.Status != ProcessStatusRunning {
+			return false
+		}
+		process.Status = ProcessStatusTerminated
+		if err := s.store.SaveProcess(ctx, process); err != nil {
+			slog.Error("cancel process: save process", "pid", pid, "error", err)
+			return false
+		}
 		cancel()
 		delete(s.cancelMap, pid)
 		return true
@@ -369,7 +389,7 @@ func (s *Service) RunNoteCell(ctx context.Context, notePath string, cellPath str
 
 	if cellNode == nil {
 		cellNumber, err := strconv.Atoi(cellPath)
-		if err != nil || cellNumber < 1 {
+		if err != nil || cellNumber < 1 || cellNumber > len(note.Content.Cells) {
 			return nil, fmt.Errorf("invalid cell number; %w", ErrBadRequest)
 		}
 

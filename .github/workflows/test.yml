@@ -9,11 +9,11 @@ name: Test
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: ghcr.io/rytsh/dock/build/go:1.26.1
+    container: ghcr.io/rytsh/dock/build/go:1.27.1
     steps:
     - name: get repository name
       run: echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
       with:
         # Disabling shallow clone is recommended for improving relevancy of reporting
         fetch-depth: 0
@@ -30,8 +30,8 @@ jobs:
     - name: Run tests
       run: |
         go test -coverprofile=coverage.out -json ./... > test-report.out
-    - name: SonarCloud Scan
-      uses: sonarsource/sonarcloud-github-action@master
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v8
       with:
         args: >
           -Dsonar.organization=${{ github.repository_owner }}
@@ -40,9 +40,8 @@ jobs:
           -Dsonar.go.tests.reportPaths=test-report.out
           -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report.out
           -Dsonar.sources=.
-          -Dsonar.exclusions=**/vendor/**,**/*_test.go
+          -Dsonar.exclusions=**/vendor/**,**/*_test.go,example/**
           -Dsonar.tests=.
           -Dsonar.test.inclusions=**/*_test.go
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

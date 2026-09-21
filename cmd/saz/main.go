@@ -61,8 +61,17 @@ func run(ctx context.Context) error {
 	}
 	defer svc.StopAlan()
 
-	// Mark any stale running processes as failed on startup
-	svc.CleanupStaleProcesses(ctx)
+	// Renew local process leases; expire only records with a stale heartbeat.
+	maintenanceCtx, stopMaintenance := context.WithCancel(ctx)
+	maintenanceDone := make(chan struct{})
+	go func() {
+		defer close(maintenanceDone)
+		svc.StartProcessMaintenance(maintenanceCtx)
+	}()
+	defer func() {
+		stopMaintenance()
+		<-maintenanceDone
+	}()
 
 	// Start periodic process cleanup in background
 	if cfg.Process.Retention > 0 && cfg.Process.Interval > 0 {

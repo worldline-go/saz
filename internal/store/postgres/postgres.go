@@ -222,29 +222,69 @@ func (s *Postgres) GetProcess(ctx context.Context, q *query.Query) ([]service.Pr
 }
 
 func (s *Postgres) SaveProcess(ctx context.Context, process *service.Process) error {
-	now := tummy.Now()
-
-	dbProcess := Process{
-		ID:        process.ID,
-		Status:    string(process.Status),
-		Info:      types.NewJSON(process.Info),
-		User:      types.NewNull(service.UserContext(ctx)),
-		CreatedAt: types.NewTime(now),
-		UpdatedAt: types.NewTime(now),
+	dbProcess := goqu.Record{
+		"id":         process.ID,
+		"status":     string(process.Status),
+		"info":       types.NewJSON(process.Info),
+		"user":       types.NewNull(service.UserContext(ctx)),
+		"created_at": goqu.L("CURRENT_TIMESTAMP"),
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
 	}
 
-	// insert or update the process with goqu
-	_, err := s.goqu.Insert(s.tableProcess).Rows(dbProcess).OnConflict(goqu.DoUpdate("id", dbProcess)).Executor().ExecContext(ctx)
+	// Terminal states must not be overwritten by a concurrent completion,
+	// cancellation or stale-process cleanup. Preserve original user and creation time.
+	result, err := s.goqu.Insert(s.tableProcess).Rows(dbProcess).OnConflict(goqu.DoUpdate("id", goqu.Record{
+		"status":     dbProcess["status"],
+		"info":       dbProcess["info"],
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
+	}).Where(s.tableProcess.Col("status").Eq(string(service.ProcessStatusRunning)))).Executor().ExecContext(ctx)
 	if err != nil {
 		return fmt.Errorf("exec upsert process: %w", err)
+	}
+	if count, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("process update rows affected: %w", err)
+	} else if count == 0 {
+		return fmt.Errorf("process %s is no longer running; %w", process.ID, service.ErrBadRequest)
 	}
 
 	return nil
 }
 
+// HeartbeatProcesses renews only the processes owned by this service instance.
+func (s *Postgres) HeartbeatProcesses(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := s.goqu.Update(s.tableProcess).Set(goqu.Record{
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
+	}).Where(goqu.C("id").In(ids), goqu.C("status").Eq(string(service.ProcessStatusRunning))).Executor().ExecContext(ctx)
+	if err != nil {
+		return fmt.Errorf("heartbeat processes: %w", err)
+	}
+	return nil
+}
+
+// FailStaleProcesses atomically expires leases using the database clock.
+// The predicate is rechecked on update, so a concurrent heartbeat wins safely.
+func (s *Postgres) FailStaleProcesses(ctx context.Context, staleAfter time.Duration) (int64, error) {
+	result, err := s.goqu.Update(s.tableProcess).Set(goqu.Record{
+		"status":     string(service.ProcessStatusFailed),
+		"info":       goqu.L("jsonb_set(COALESCE(info, '{}'::jsonb), '{error}', to_jsonb(?::text))", "process heartbeat expired"),
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
+	}).Where(
+		goqu.C("status").Eq(string(service.ProcessStatusRunning)),
+		goqu.C("updated_at").Lt(goqu.L("CURRENT_TIMESTAMP - (? * INTERVAL '1 second')", staleAfter.Seconds())),
+	).Executor().ExecContext(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("expire stale processes: %w", err)
+	}
+	return result.RowsAffected()
+}
+
 func (s *Postgres) DeleteProcessBefore(ctx context.Context, before time.Time) (int64, error) {
 	result, err := s.goqu.Delete(s.tableProcess).Where(
 		goqu.C("created_at").Lt(before),
+		goqu.C("status").Neq(string(service.ProcessStatusRunning)),
 	).Executor().ExecContext(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("delete process before %s: %w", before, err)
